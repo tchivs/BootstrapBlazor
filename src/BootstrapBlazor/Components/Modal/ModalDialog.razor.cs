@@ -1,15 +1,16 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.Extensions.Localization;
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// 
+/// ModalDialog 组件
 /// </summary>
-public partial class ModalDialog : IHandlerException, IDisposable
+public partial class ModalDialog : IHandlerException
 {
     private string MaximizeAriaLabel => MaximizeStatus ? "maximize" : "restore";
 
@@ -23,6 +24,7 @@ public partial class ModalDialog : IHandlerException, IDisposable
         .AddClass("modal-dialog-scrollable", IsScrolling)
         .AddClass("modal-fullscreen", MaximizeStatus)
         .AddClass("is-draggable", IsDraggable)
+        .AddClass("is-draggable-center", IsCentered && IsDraggable && _firstRender)
         .AddClass("d-none", !IsShown)
         .AddClass(Class, !string.IsNullOrEmpty(Class))
         .Build();
@@ -45,13 +47,19 @@ public partial class ModalDialog : IHandlerException, IDisposable
     public string? Class { get; set; }
 
     /// <summary>
-    /// 获得/设置 弹窗大小
+    /// 获得/设置 是否可以 Resize 弹窗 默认 false
+    /// </summary>
+    [Parameter]
+    public bool ShowResize { get; set; }
+
+    /// <summary>
+    /// 获得/设置 弹窗大小 默认为 <see cref="Size.ExtraExtraLarge"/>
     /// </summary>
     [Parameter]
     public Size Size { get; set; } = Size.ExtraExtraLarge;
 
     /// <summary>
-    /// 获得/设置 弹窗大小
+    /// 获得/设置 弹窗大小 默认为 <see cref="FullScreenSize.None"/>
     /// </summary>
     [Parameter]
     public FullScreenSize FullScreenSize { get; set; }
@@ -60,10 +68,10 @@ public partial class ModalDialog : IHandlerException, IDisposable
     /// 获得/设置 是否垂直居中 默认为 true
     /// </summary>
     [Parameter]
-    public bool IsCentered { get; set; }
+    public bool IsCentered { get; set; } = true;
 
     /// <summary>
-    /// 获得/设置 是否弹窗正文超长时滚动
+    /// 获得/设置 是否弹窗正文超长时滚动 默认为 false
     /// </summary>
     [Parameter]
     public bool IsScrolling { get; set; }
@@ -75,7 +83,7 @@ public partial class ModalDialog : IHandlerException, IDisposable
     public bool IsDraggable { get; set; }
 
     /// <summary>
-    /// 获得/设置 是否显示最大化按钮
+    /// 获得/设置 是否显示最大化按钮 默认为 false
     /// </summary>
     [Parameter]
     public bool ShowMaximizeButton { get; set; }
@@ -99,6 +107,49 @@ public partial class ModalDialog : IHandlerException, IDisposable
     public bool ShowPrintButton { get; set; }
 
     /// <summary>
+    /// 获得/设置 Header 中是否显示打印按钮 默认 false 不显示
+    /// </summary>
+    [Parameter]
+    public bool ShowPrintButtonInHeader { get; set; }
+
+    /// <summary>
+    /// 获得/设置 Header 中打印按钮显示文字 默认为资源文件中 打印
+    /// </summary>
+    [Parameter]
+    public string? PrintButtonText { get; set; }
+
+    /// <summary>
+    /// 获得/设置 打印按钮图标 未设置 取当前图标主题下打印图标
+    /// </summary>
+    [Parameter]
+    public string? PrintButtonIcon { get; set; }
+
+    /// <summary>
+    /// 获得/设置 打印按钮颜色 默认 Color.Primary
+    /// </summary>
+    [Parameter]
+    public Color PrintButtonColor { get; set; } = Color.Primary;
+
+    /// <summary>
+    /// 获得/设置 是否显示导出 Pdf 按钮 默认为 false 不显示
+    /// </summary>
+    [Parameter]
+    public bool ShowExportPdfButton { get; set; }
+
+    /// <summary>
+    /// 获得/设置 Header 中是否显示导出 Pdf 按钮 默认 false 不显示
+    /// </summary>
+    [Parameter]
+    public bool ShowExportPdfButtonInHeader { get; set; }
+
+    /// <summary>
+    /// 获得/设置 导出 Pdf 按钮配置项
+    /// </summary>
+    [Parameter]
+    [NotNull]
+    public ExportPdfButtonOptions? ExportPdfButtonOptions { get; set; }
+
+    /// <summary>
     /// 获得/设置 是否显示 Header 关闭按钮
     /// </summary>
     [Parameter]
@@ -115,18 +166,6 @@ public partial class ModalDialog : IHandlerException, IDisposable
     /// </summary>
     [Parameter]
     public bool ShowFooter { get; set; } = true;
-
-    /// <summary>
-    /// 获得/设置 Header 中是否显示打印按钮 默认 false 不显示
-    /// </summary>
-    [Parameter]
-    public bool ShowPrintButtonInHeader { get; set; }
-
-    /// <summary>
-    /// 获得/设置 Header 中打印按钮显示文字 默认为资源文件中 打印 
-    /// </summary>
-    [Parameter]
-    public string? PrintButtonText { get; set; }
 
     /// <summary>
     /// 获得/设置 弹窗内容相关数据 多用于传值
@@ -159,7 +198,7 @@ public partial class ModalDialog : IHandlerException, IDisposable
     public RenderFragment? HeaderTemplate { get; set; }
 
     /// <summary>
-    /// 获得/设置 保存按钮回调委托
+    /// 获得/设置 保存按钮回调委托 返回 true 并且设置 <see cref="IsAutoCloseAfterSave"/> true 时自动关闭弹窗
     /// </summary>
     [Parameter]
     public Func<Task<bool>>? OnSaveAsync { get; set; }
@@ -192,6 +231,13 @@ public partial class ModalDialog : IHandlerException, IDisposable
     public string? SaveButtonText { get; set; }
 
     /// <summary>
+    /// 获得/设置 保存按钮显示图标 未设置时 使用主题图标
+    /// </summary>
+    [Parameter]
+    [NotNull]
+    public string? SaveButtonIcon { get; set; }
+
+    /// <summary>
     /// 获得/设置 最大化按钮图标
     /// </summary>
     [Parameter]
@@ -210,7 +256,21 @@ public partial class ModalDialog : IHandlerException, IDisposable
     /// </summary>
     [Parameter]
     [NotNull]
-    public string? SaveIcon { get; set; }
+    [Obsolete("已弃用，请使用 SaveButtonIcon; Deprecated, please use SaveButtonIcon")]
+    [ExcludeFromCodeCoverage]
+    public string? SaveIcon { get => SaveButtonIcon; set => SaveButtonIcon = value; }
+
+    /// <summary>
+    /// 获得/设置 模态弹窗任务 <see cref="TaskCompletionSource{TResult}"/> 实例 默认 null
+    /// </summary>
+    [Parameter]
+    public TaskCompletionSource<DialogResult>? ResultTask { get; set; }
+
+    /// <summary>
+    /// 获得/设置 获得模态弹窗方法 默认 null
+    /// </summary>
+    [Parameter]
+    public Func<IResultDialog?>? GetResultDialog { get; set; }
 
     /// <summary>
     /// 获得/设置 弹窗容器实例
@@ -228,6 +288,10 @@ public partial class ModalDialog : IHandlerException, IDisposable
     private IIconTheme? IconTheme { get; set; }
 
     private string? MaximizeIconString { get; set; }
+
+    private DialogResult _result = DialogResult.Close;
+
+    private bool _firstRender = true;
 
     /// <summary>
     /// OnInitialized 方法
@@ -247,16 +311,38 @@ public partial class ModalDialog : IHandlerException, IDisposable
     {
         base.OnParametersSet();
 
+        ExportPdfButtonOptions ??= new()
+        {
+            Selector = $"#{Id} .modal-body"
+        };
+
         CloseButtonText ??= Localizer[nameof(CloseButtonText)];
         SaveButtonText ??= Localizer[nameof(SaveButtonText)];
         PrintButtonText ??= Localizer[nameof(PrintButtonText)];
+        ExportPdfButtonOptions.Text ??= Localizer["ExportPdfButtonText"];
 
+        SaveButtonIcon ??= IconTheme.GetIconByKey(ComponentIcons.DialogSaveButtonIcon);
         CloseButtonIcon ??= IconTheme.GetIconByKey(ComponentIcons.DialogCloseButtonIcon);
-        MaximizeWindowIcon ??= IconTheme.GetIconByKey(ComponentIcons.DialogMaxminzeWindowIcon);
-        SaveIcon ??= IconTheme.GetIconByKey(ComponentIcons.DialogSaveButtonIcon);
+        MaximizeWindowIcon ??= IconTheme.GetIconByKey(ComponentIcons.DialogMaximizeWindowIcon);
         RestoreWindowIcon ??= IconTheme.GetIconByKey(ComponentIcons.DialogRestoreWindowIcon);
+        PrintButtonIcon ??= IconTheme.GetIconByKey(ComponentIcons.PrintButtonIcon);
+        ExportPdfButtonOptions.Icon ??= IconTheme.GetIconByKey(ComponentIcons.TableExportPdfIcon);
 
         MaximizeIconString = MaximizeWindowIcon;
+    }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    /// <param name="firstRender"></param>
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+
+        if (firstRender)
+        {
+            _firstRender = false;
+        }
     }
 
     /// <summary>
@@ -269,7 +355,39 @@ public partial class ModalDialog : IHandlerException, IDisposable
         StateHasChanged();
     }
 
-    private async Task OnClickClose() => await Modal.Close();
+    private Task SetResultAsync(DialogResult result)
+    {
+        _result = result;
+        return Task.CompletedTask;
+    }
+
+    private async Task OnClickCloseAsync()
+    {
+        _result = DialogResult.Close;
+        await CloseAsync();
+    }
+
+    private async Task CloseAsync()
+    {
+        if (GetResultDialog != null)
+        {
+            var dialog = GetResultDialog();
+            if (dialog != null)
+            {
+                var result = await dialog.OnClosing(_result);
+                if (result)
+                {
+                    await dialog.OnClose(_result);
+                }
+                else
+                {
+                    return;
+                }
+            }
+        }
+        ResultTask?.TrySetResult(_result);
+        await Modal.Close();
+    }
 
     private bool MaximizeStatus { get; set; }
 
@@ -284,11 +402,11 @@ public partial class ModalDialog : IHandlerException, IDisposable
         var ret = true;
         if (OnSaveAsync != null)
         {
-            await OnSaveAsync();
+            ret = await OnSaveAsync();
         }
         if (IsAutoCloseAfterSave && ret)
         {
-            await OnClickClose();
+            await CloseAsync();
         }
     }
 
@@ -319,21 +437,14 @@ public partial class ModalDialog : IHandlerException, IDisposable
     /// Dispose 方法
     /// </summary>
     /// <param name="disposing"></param>
-    protected virtual void Dispose(bool disposing)
+    protected override async ValueTask DisposeAsync(bool disposing)
     {
+        await base.DisposeAsync(disposing);
+
         if (disposing)
         {
             ErrorLogger?.UnRegister(this);
             Modal.RemoveDialog(this);
         }
-    }
-
-    /// <summary>
-    /// Dispose 方法
-    /// </summary>
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
     }
 }

@@ -1,11 +1,11 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Bunit.TestDoubles;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
-using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using System.Security.Claims;
 
@@ -20,11 +20,24 @@ public class LayoutTest : BootstrapBlazorTestBase
         {
             pb.Add(a => a.ShowFooter, true);
             pb.Add(a => a.Footer, CreateFooter());
+            pb.Add(a => a.ShowGotoTop, true);
         });
         Assert.Contains("Footer", cut.Markup);
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.IsFixedTabHeader, true);
+        });
+        cut.Contains("data-bb-target=\".tabs-body\"");
 
         cut.SetParametersAndRender(pb => pb.Add(a => a.ShowFooter, false));
-        Assert.DoesNotContain("Footer", cut.Markup);
+        cut.WaitForAssertion(() => Assert.DoesNotContain("Footer", cut.Markup));
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.ShowFooter, true);
+            pb.Add(a => a.Footer, (RenderFragment?)null);
+        });
+        cut.Contains("--bb-layout-footer-height: 0px;");
     }
 
     [Fact]
@@ -39,7 +52,44 @@ public class LayoutTest : BootstrapBlazorTestBase
         Assert.Contains("layout-footer is-fixed", cut.Markup);
 
         cut.SetParametersAndRender(pb => pb.Add(a => a.IsFixedFooter, false));
-        Assert.DoesNotContain("is-fixed", cut.Markup);
+        cut.WaitForAssertion(() => Assert.DoesNotContain("is-fixed", cut.Markup));
+    }
+
+    [Fact]
+    public void IsFixedTabHeader_OK()
+    {
+        var cut = Context.RenderComponent<Layout>(pb =>
+        {
+            pb.Add(a => a.Side, new RenderFragment(builder =>
+            {
+                builder.AddContent(0, "test");
+            }));
+            pb.Add(a => a.Menus, new MenuItem[] { new() { Url = "/" } });
+
+        });
+        Assert.DoesNotContain("is-fixed-tab", cut.Markup);
+
+        cut.SetParametersAndRender(pb => pb.Add(a => a.IsFixedTabHeader, true));
+        Assert.DoesNotContain("is-fixed-tab", cut.Markup);
+
+        cut.SetParametersAndRender(pb => pb.Add(a => a.UseTabSet, true));
+        Assert.Contains("is-fixed-tab", cut.Markup);
+    }
+
+    [Fact]
+    public void IsPage_OK()
+    {
+        var cut = Context.RenderComponent<Layout>(pb =>
+        {
+            pb.Add(a => a.IsPage, true);
+        });
+        Assert.Contains("is-page", cut.Markup);
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.IsPage, false);
+        });
+        Assert.DoesNotContain("is-page", cut.Markup);
     }
 
     [Fact]
@@ -52,16 +102,22 @@ public class LayoutTest : BootstrapBlazorTestBase
         Assert.Contains("is-collapsed", cut.Markup);
 
         cut.SetParametersAndRender(pb => pb.Add(a => a.IsCollapsed, false));
-        Assert.DoesNotContain("is-collapsed", cut.Markup);
+        cut.WaitForAssertion(() => Assert.DoesNotContain("is-collapsed", cut.Markup));
     }
 
     [Fact]
-    public void ShowCollapseBar_OK()
+    public async Task ShowCollapseBar_OK()
     {
         var cut = Context.RenderComponent<Layout>(pb =>
         {
             pb.Add(a => a.ShowCollapseBar, true);
             pb.Add(a => a.Side, CreateSide());
+        });
+        cut.DoesNotContain("<i class=\"fa-solid fa-bars\"></i>");
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.Header, CreateHeader());
         });
         Assert.Contains("<i class=\"fa-solid fa-bars\"></i>", cut.Markup);
 
@@ -75,24 +131,16 @@ public class LayoutTest : BootstrapBlazorTestBase
             });
             pb.Add(a => a.IsCollapsedChanged, v => collapsed = v);
         });
-        cut.Find("header > a").Click();
+
+        var bar = cut.Find(".layout-header-bar");
+        await cut.InvokeAsync(() =>
+        {
+            bar.Click();
+        });
         Assert.True(collapsed);
 
         cut.SetParametersAndRender(pb => pb.Add(a => a.ShowCollapseBar, false));
-        Assert.DoesNotContain("<i class=\"fa-solid fa-bars\"></i>", cut.Markup);
-    }
-
-    [Fact]
-    public void IsPage_OK()
-    {
-        var cut = Context.RenderComponent<Layout>(pb =>
-        {
-            pb.Add(a => a.IsPage, true);
-        });
-        Assert.Contains("is-page", cut.Markup);
-
-        cut.SetParametersAndRender(pb => pb.Add(a => a.IsPage, false));
-        Assert.DoesNotContain("is-page", cut.Markup);
+        cut.WaitForAssertion(() => Assert.DoesNotContain("<i class=\"fa-solid fa-bars\"></i>", cut.Markup));
     }
 
     [Fact]
@@ -103,13 +151,14 @@ public class LayoutTest : BootstrapBlazorTestBase
             pb.Add(a => a.IsFullSide, true);
             pb.Add(a => a.Side, CreateSide());
             pb.Add(a => a.ShowFooter, true);
+            pb.Add(a => a.Footer, CreateFooter());
             pb.Add(a => a.ShowGotoTop, true);
-            pb.Add(a => a.Menus, new MenuItem[] { new MenuItem { Url = "/" } });
+            pb.Add(a => a.Menus, new MenuItem[] { new() { Url = "/" } });
         });
         Assert.Contains("layout has-sidebar", cut.Markup);
 
         cut.SetParametersAndRender(pb => pb.Add(a => a.IsFullSide, false));
-        Assert.DoesNotContain("layout has-sidebar", cut.Markup);
+        cut.WaitForAssertion(() => Assert.DoesNotContain("layout has-sidebar", cut.Markup));
     }
 
     [Fact]
@@ -123,10 +172,10 @@ public class LayoutTest : BootstrapBlazorTestBase
         Assert.Contains("300px", cut.Markup);
 
         cut.SetParametersAndRender(pb => pb.Add(a => a.SideWidth, "10%"));
-        Assert.Contains("10%", cut.Markup);
+        cut.WaitForAssertion(() => Assert.Contains("10%", cut.Markup));
 
         cut.SetParametersAndRender(pb => pb.Add(a => a.SideWidth, ""));
-        Assert.DoesNotContain("width:", cut.Markup);
+        cut.WaitForAssertion(() => Assert.DoesNotContain("width:", cut.Markup));
     }
 
     [Fact]
@@ -134,19 +183,108 @@ public class LayoutTest : BootstrapBlazorTestBase
     {
         var cut = Context.RenderComponent<Layout>(pb =>
         {
-            pb.Add(a => a.UseTabSet, true);
+            pb.Add(a => a.UseTabSet, false);
             pb.Add(a => a.Main, CreateMain());
-            pb.Add(a => a.ExcludeUrls, new String[] { "/Index" });
+            pb.Add(a => a.ExcludeUrls, new string[] { "/Index" });
             pb.Add(a => a.TabDefaultUrl, "/Index");
             pb.Add(a => a.IsOnlyRenderActiveTab, true);
+            pb.Add(a => a.AllowDragTab, true);
             pb.Add(a => a.NotFoundTabText, "Test");
             pb.Add(a => a.NotAuthorized, (RenderFragment?)null);
             pb.Add(a => a.NotFound, (RenderFragment?)null);
+            pb.Add(a => a.AdditionalAssemblies, new Assembly[] { GetType().Assembly });
         });
-        Assert.Contains("tabs", cut.Markup);
-
-        cut.SetParametersAndRender(pb => pb.Add(a => a.UseTabSet, false));
         Assert.DoesNotContain("tabs", cut.Markup);
+
+        cut.SetParametersAndRender(pb => pb.Add(a => a.UseTabSet, true));
+        cut.WaitForAssertion(() => Assert.Contains("tabs", cut.Markup));
+
+        var nav = cut.Services.GetRequiredService<FakeNavigationManager>();
+        nav.NavigateTo("/Cat");
+        cut.WaitForAssertion(() => cut.Contains(">Cat<"));
+
+        var items = cut.FindComponent<Tab>().Instance.Items;
+        Assert.Equal(2, items.Count());
+        var item = items.Last();
+        Assert.Equal("Cat", item.Text);
+    }
+
+    [Fact]
+    public void UseTabSet_Layout()
+    {
+        var cut = Context.RenderComponent<Layout>(pb =>
+        {
+            pb.Add(a => a.UseTabSet, true);
+            pb.Add(a => a.AdditionalAssemblies, new Assembly[] { GetType().Assembly });
+            pb.Add(a => a.Menus, new List<MenuItem>()
+            {
+                new()
+                {
+                    Text = "menu1",
+                    Url = "/Binder",
+                    Icon = "fa-solid fa-home"
+                },
+                new()
+                {
+                    Text = "menu1",
+                    Url = "/Dog",
+                    Icon = "fa-solid fa-home"
+                }
+            });
+        });
+        var nav = cut.Services.GetRequiredService<FakeNavigationManager>();
+        nav.NavigateTo("/Binder");
+        cut.WaitForAssertion(() => cut.Contains("<div class=\"tabs-body-content\">Binder</div>"));
+    }
+
+    [Fact]
+    public void UseTabSet_Menus()
+    {
+        var cut = Context.RenderComponent<Layout>(pb =>
+        {
+            pb.Add(a => a.UseTabSet, true);
+            pb.Add(a => a.AdditionalAssemblies, new Assembly[] { GetType().Assembly });
+        });
+        var nav = cut.Services.GetRequiredService<FakeNavigationManager>();
+        nav.NavigateTo("/Binder");
+        cut.WaitForAssertion(() => cut.Contains("<div class=\"tabs-body-content\">Binder</div>"));
+    }
+
+    [Fact]
+    public void UseTabSet_ShowTabExtendButtons()
+    {
+        var cut = Context.RenderComponent<Layout>(pb =>
+        {
+            pb.Add(a => a.UseTabSet, true);
+            pb.Add(a => a.AdditionalAssemblies, new Assembly[] { GetType().Assembly });
+            pb.Add(a => a.ShowTabExtendButtons, false);
+        });
+        cut.DoesNotContain("<div class=\"nav-link-bar dropdown dropdown-toggle\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\">");
+    }
+
+    [Fact]
+    public void UseTabSet_ShowCloseButton()
+    {
+        var cut = Context.RenderComponent<Layout>(pb =>
+        {
+            pb.Add(a => a.UseTabSet, true);
+            pb.Add(a => a.AdditionalAssemblies, new Assembly[] { GetType().Assembly });
+            pb.Add(a => a.ShowTabItemClose, false);
+        });
+        cut.DoesNotContain("<span class=\"tabs-item-close\"");
+    }
+
+    [Fact]
+    public void UseTabSet_ClickTabToNavigation()
+    {
+        var cut = Context.RenderComponent<Layout>(pb =>
+        {
+            pb.Add(a => a.UseTabSet, true);
+            pb.Add(a => a.AdditionalAssemblies, new Assembly[] { GetType().Assembly });
+            pb.Add(a => a.ClickTabToNavigation, false);
+        });
+        var tab = cut.FindComponent<Tab>();
+        Assert.False(tab.Instance.ClickTabToNavigation);
     }
 
     [Fact]
@@ -161,7 +299,7 @@ public class LayoutTest : BootstrapBlazorTestBase
         Assert.Contains("layout-header is-fixed", cut.Markup);
 
         cut.SetParametersAndRender(pb => pb.Add(a => a.IsFixedHeader, false));
-        Assert.DoesNotContain("is-fixed", cut.Markup);
+        cut.WaitForAssertion(() => Assert.DoesNotContain("is-fixed", cut.Markup));
     }
 
     [Fact]
@@ -171,7 +309,7 @@ public class LayoutTest : BootstrapBlazorTestBase
         var cut = Context.RenderComponent<Layout>(pb =>
         {
             pb.Add(a => a.Side, CreateSide());
-            pb.Add(a => a.Menus, new MenuItem[] { new MenuItem { Url = "/" } });
+            pb.Add(a => a.Menus, new MenuItem[] { new() { Url = "/" } });
             pb.Add(a => a.IsCollapsedChanged, v => collapsed = v);
             pb.Add(a => a.OnClickMenu, item =>
             {
@@ -179,12 +317,13 @@ public class LayoutTest : BootstrapBlazorTestBase
                 return Task.CompletedTask;
             });
         });
+
         cut.Find("li").Click();
-        Assert.True(collapsed);
+        cut.WaitForAssertion(() => Assert.True(collapsed));
 
         cut.Instance.SetCollapsed(700);
         cut.Find("li").Click();
-        Assert.True(collapsed);
+        cut.WaitForAssertion(() => Assert.True(collapsed));
     }
 
     [Fact]
@@ -193,6 +332,7 @@ public class LayoutTest : BootstrapBlazorTestBase
         var navMan = Context.Services.GetRequiredService<FakeNavigationManager>();
         var cut = Context.RenderComponent<Layout>(pb =>
         {
+            pb.Add(a => a.Resource, null);
             pb.Add(a => a.NotAuthorizeUrl, "/Test");
             pb.Add(a => a.OnAuthorizing, url =>
             {
@@ -200,7 +340,7 @@ public class LayoutTest : BootstrapBlazorTestBase
             });
         });
         navMan.NavigateTo("/");
-        Assert.Equal("http://localhost/", navMan.Uri);
+        cut.WaitForAssertion(() => Assert.Equal("http://localhost/", navMan.Uri));
 
         cut.SetParametersAndRender(pb =>
         {
@@ -210,7 +350,7 @@ public class LayoutTest : BootstrapBlazorTestBase
             });
         });
         navMan.NavigateTo("/");
-        Assert.Equal("http://localhost/Test", navMan.Uri);
+        cut.WaitForAssertion(() => Assert.Equal("http://localhost/Test", navMan.Uri));
     }
 
     [Fact]
@@ -245,7 +385,7 @@ public class LayoutTest : BootstrapBlazorTestBase
     }
 
     [Fact]
-    public void OnUpdateAsync_Ok()
+    public async Task OnUpdateAsync_Ok()
     {
         var updated = false;
         var cut = Context.RenderComponent<Layout>(pb =>
@@ -256,7 +396,7 @@ public class LayoutTest : BootstrapBlazorTestBase
                 return Task.CompletedTask;
             });
         });
-        cut.InvokeAsync(() => cut.Instance.UpdateAsync("Test"));
+        await cut.InvokeAsync(() => cut.Instance.UpdateAsync("Test"));
         Assert.True(updated);
     }
 
@@ -285,6 +425,24 @@ public class LayoutTest : BootstrapBlazorTestBase
         var button = cut.Find("button");
         cut.InvokeAsync(() => button.Click());
         cut.Contains("<div class=\"error-stack\">");
+        Context.DisposeComponents();
+    }
+
+    [Fact]
+    public void CollapseBarTemplate_Ok()
+    {
+        var cut = Context.RenderComponent<Layout>(pb =>
+        {
+            pb.Add(a => a.Side, CreateSide());
+            pb.Add(a => a.Header, CreateHeader());
+            pb.Add(a => a.IsFullSide, true);
+            pb.Add(a => a.ShowCollapseBar, true);
+            pb.Add(a => a.CollapseBarTemplate, builder =>
+            {
+                builder.AddContent(0, "CollapseBarTemplate-Content");
+            });
+        });
+        Assert.Contains("CollapseBarTemplate-Content", cut.Markup);
     }
 
     private static RenderFragment CreateHeader(string? content = "Header") => builder => builder.AddContent(0, content);
@@ -296,7 +454,7 @@ public class LayoutTest : BootstrapBlazorTestBase
     private static RenderFragment CreateSide(string? content = "Side") => builder => builder.AddContent(0, content);
 }
 
-public class LayoutAuthorizationTest : AuthorizateViewTestBase
+public class LayoutAuthorizationTest : AuthorizationViewTestBase
 {
     [Fact]
     public void Authorized_Ok()
@@ -311,6 +469,7 @@ public class LayoutAuthorizationTest : AuthorizateViewTestBase
             pb.Add(a => a.AdditionalAssemblies, new Assembly[] { GetType().Assembly });
             pb.Add(a => a.OnAuthorizing, url => Task.FromResult(true));
         });
-        cut.Contains("<section class=\"layout\"><header class=\"layout-header\"></header><main class=\"layout-main\"></main></section>");
+        cut.Contains("<section class=\"layout\" style=\"--bb-layout-header-height: 0px; --bb-layout-footer-height: 0px;\"><main class=\"layout-main\"></main></section>");
+        Context.DisposeComponents();
     }
 }

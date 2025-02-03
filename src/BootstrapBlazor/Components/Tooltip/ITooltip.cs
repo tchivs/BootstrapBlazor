@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -36,17 +37,17 @@ public interface ITooltip
     string? CustomClass { get; set; }
 
     /// <summary>
-    /// Delay showing and hiding the tooltip (ms)—doesn’t apply to manual trigger type. If a number is supplied, delay is applied to both hide/show. Object structure is: delay: { "show": 500, "hide": 100 }. default value null
+    /// 获得/设置 显示隐藏延时 默认 null
     /// </summary>
     string? Delay { get; set; }
 
     /// <summary>
-    /// Enable or disable the sanitization. If activated 'template', 'content' and 'title' options will be sanitized.
+    /// 获得/设置 是否对 <see cref="Title"/> 进行关键字过滤 默认 true
     /// </summary>
     bool Sanitize { get; set; }
 
     /// <summary>
-    /// If a selector is provided, tooltip objects will be delegated to the specified targets.
+    /// 获得/设置 元素选择器
     /// </summary>
     string? Selector { get; set; }
 }

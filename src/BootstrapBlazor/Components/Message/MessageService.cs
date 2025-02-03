@@ -1,24 +1,17 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// 
+/// MessageService 消息弹窗服务
 /// </summary>
-public class MessageService : BootstrapServiceBase<MessageOption>
+/// <param name="option"></param>
+public class MessageService(IOptionsMonitor<BootstrapBlazorOptions> option) : BootstrapServiceBase<MessageOption>
 {
-    private BootstrapBlazorOptions Options { get; }
-
-    /// <summary>
-    /// 构造方法
-    /// </summary>
-    /// <param name="option"></param>
-    public MessageService(IOptionsMonitor<BootstrapBlazorOptions> option)
-    {
-        Options = option.CurrentValue;
-    }
+    private BootstrapBlazorOptions Options { get; } = option.CurrentValue;
 
     /// <summary>
     /// Show 方法

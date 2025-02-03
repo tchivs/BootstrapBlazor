@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using System.Collections.Concurrent;
 
@@ -17,7 +18,7 @@ public partial class TableToolbar<TItem> : ComponentBase
     /// <summary>
     /// 获得 Toolbar 按钮集合
     /// </summary>
-    private List<ButtonBase> Buttons { get; } = new();
+    private readonly List<IToolbarComponent> _buttons = [];
 
     private readonly ConcurrentDictionary<ButtonBase, bool> _asyncButtonStateCache = new();
 
@@ -50,6 +51,10 @@ public partial class TableToolbar<TItem> : ComponentBase
         .AddClass("d-none d-sm-inline-flex", IsAutoCollapsedToolbarButton)
         .Build();
 
+    private string? GetItemClass(ButtonBase button) => CssBuilder.Default("dropdown-item")
+        .AddClass("disabled", GetDisabled(button))
+        .Build();
+
     private async Task OnToolbarButtonClick(TableToolbarButton<TItem> button)
     {
         _asyncButtonStateCache.TryGetValue(button, out var disabled);
@@ -61,6 +66,11 @@ public partial class TableToolbar<TItem> : ComponentBase
                 await button.OnClick.InvokeAsync();
             }
 
+            if (button.OnClickWithoutRender != null)
+            {
+                await button.OnClickWithoutRender();
+            }
+
             // 传递当前选中行给回调委托方法
             if (button.OnClickCallback != null)
             {
@@ -70,7 +80,7 @@ public partial class TableToolbar<TItem> : ComponentBase
         }
     }
 
-    private async Task OnConfirm(TableToolbarPopconfirmButton<TItem> button)
+    private async Task OnConfirm(TableToolbarPopConfirmButton<TItem> button)
     {
         _asyncButtonStateCache.TryGetValue(button, out var disabled);
         if (!disabled)
@@ -101,7 +111,7 @@ public partial class TableToolbar<TItem> : ComponentBase
         }
         else if (button is ITableToolbarButton<TItem> tb)
         {
-            ret = tb.IsDisabledCallback == null ? (tb.IsEnableWhenSelectedOneRow && OnGetSelectedRows().Count() != 1) : tb.IsDisabledCallback(OnGetSelectedRows());
+            ret |= tb.IsDisabledCallback == null ? (tb.IsEnableWhenSelectedOneRow && OnGetSelectedRows().Count() != 1) : tb.IsDisabledCallback(OnGetSelectedRows());
         }
         return ret;
     }
@@ -109,10 +119,10 @@ public partial class TableToolbar<TItem> : ComponentBase
     /// <summary>
     /// 添加按钮到工具栏方法
     /// </summary>
-    public void AddButton(ButtonBase button) => Buttons.Add(button);
+    public void AddButton(IToolbarComponent button) => _buttons.Add(button);
 
     /// <summary>
     /// 移除按钮到工具栏方法
     /// </summary>
-    public void RemoveButton(ButtonBase button) => Buttons.Remove(button);
+    public void RemoveButton(IToolbarComponent button) => _buttons.Remove(button);
 }

@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 
@@ -78,7 +79,7 @@ public class PaginationTest : BootstrapBlazorTestBase
     }
 
     [Fact]
-    public void GotoNavigator_Ok()
+    public async Task GotoNavigator_Ok()
     {
         var index = 0;
         var cut = Context.RenderComponent<Pagination>(pb =>
@@ -94,7 +95,7 @@ public class PaginationTest : BootstrapBlazorTestBase
 
         var navigator = cut.FindComponent<GotoNavigator>();
         var input = navigator.Find("input");
-        cut.InvokeAsync(() =>
+        await cut.InvokeAsync(() =>
         {
             input.Change("5");
             input.KeyUp("Enter");
@@ -148,13 +149,13 @@ public class PaginationTest : BootstrapBlazorTestBase
     }
 
     [Fact]
-    public void NextLink_Ok()
+    public async Task NextLink_Ok()
     {
         var index = 0;
         var cut = Context.RenderComponent<Pagination>(pb =>
         {
             pb.Add(a => a.PageCount, 8);
-            pb.Add(a => a.PageIndex, 8);
+            pb.Add(a => a.PageIndex, 4);
             pb.Add(a => a.MaxPageLinkCount, 5);
             pb.Add(a => a.OnPageLinkClick, pageIndex =>
             {
@@ -163,9 +164,13 @@ public class PaginationTest : BootstrapBlazorTestBase
             });
         });
         var links = cut.FindAll(".page-link");
-        var link = links[links.Count - 1];
-        cut.InvokeAsync(() => link.Click());
-        Assert.Equal(1, index);
+        var link = links[links.Count - 2];
+        await cut.InvokeAsync(() => link.Click());
+        Assert.Equal(8, index);
+
+        link = links[links.Count - 1];
+        await cut.InvokeAsync(() => link.Click());
+        Assert.Equal(8, index);
     }
 
     [Fact]

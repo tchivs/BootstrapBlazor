@@ -1,12 +1,11 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
-
-using BootstrapBlazor.Shared;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 
-public class TableFooterCellTest : TestBase
+public class TableFooterCellTest : BootstrapBlazorTestBase
 {
     [Theory]
     [InlineData(true)]
@@ -15,13 +14,13 @@ public class TableFooterCellTest : TestBase
     {
         var ds = new List<Foo>()
         {
-            new Foo() { Count = 1 },
-            new Foo() { Count = 2 },
+            new() { Count = 1 },
+            new() { Count = 2 },
         };
 
         var cut = Context.RenderComponent<TableFooterCell>(pb =>
         {
-            pb.AddCascadingValue<bool>("IsMobileMode", mobile);
+            pb.AddCascadingValue("IsMobileMode", mobile);
             pb.AddCascadingValue<object>("TableFooterContext", ds);
             pb.Add(a => a.Field, nameof(Foo.Count));
         });
@@ -39,13 +38,121 @@ public class TableFooterCellTest : TestBase
         }
     }
 
+    [Theory]
+    [InlineData(BreakPoint.Large)]
+    [InlineData(BreakPoint.Small)]
+    [InlineData(BreakPoint.ExtraLarge)]
+    public void ScreenSize_Ok(BreakPoint screenSize)
+    {
+        var ds = new List<Foo>()
+        {
+            new() { Count = 1 },
+            new() { Count = 2 },
+        };
+
+        var checkShownWithBreakpoint = screenSize >= BreakPoint.Large;
+        var cut = Context.RenderComponent<TableFooterCell>(pb =>
+        {
+            pb.AddCascadingValue("TableBreakPoint", screenSize);
+            pb.AddCascadingValue<object>("TableFooterContext", ds);
+            pb.Add(a => a.Field, nameof(Foo.Count));
+            pb.Add(a => a.ShownWithBreakPoint, BreakPoint.Large);
+            pb.Add(a => a.Text, "test-Text");
+        });
+
+        if (checkShownWithBreakpoint)
+        {
+            cut.Contains("test-Text");
+        }
+        else
+        {
+            cut.DoesNotContain("test-Text");
+        }
+    }
+
+    [Theory]
+    [InlineData(BreakPoint.None)]
+    [InlineData(BreakPoint.Small)]
+    [InlineData(BreakPoint.ExtraLarge)]
+    public void ShownWithBreakPoint_Ok(BreakPoint shownWithBreakPoint)
+    {
+        var ds = new List<Foo>()
+        {
+            new() { Count = 1 },
+            new() { Count = 2 },
+        };
+
+        var screenSize = BreakPoint.Large;
+        var checkShownWithBreakpoint = screenSize >= shownWithBreakPoint;
+        var cut = Context.RenderComponent<TableFooterCell>(pb =>
+        {
+            pb.AddCascadingValue("TableBreakPoint", screenSize);
+            pb.AddCascadingValue<object>("TableFooterContext", ds);
+            pb.Add(a => a.ShownWithBreakPoint, shownWithBreakPoint);
+            pb.Add(a => a.Text, "test-Text");
+        });
+
+        if (checkShownWithBreakpoint)
+        {
+            cut.Contains("test-Text");
+        }
+        else
+        {
+            cut.DoesNotContain("test-Text");
+        }
+    }
+
+    [Fact]
+    public void ColspanCallback_Ok()
+    {
+        var ds = new List<Foo>()
+        {
+            new() { Count = 1 },
+            new() { Count = 2 },
+        };
+        var point = BreakPoint.None;
+        var cut = Context.RenderComponent<TableFooterCell>(pb =>
+        {
+            pb.AddCascadingValue("TableBreakPoint", BreakPoint.Large);
+            pb.AddCascadingValue<object>("TableFooterContext", ds);
+            pb.Add(a => a.Field, nameof(Foo.Count));
+            pb.Add(a => a.ColspanCallback, b =>
+            {
+                point = b;
+                return 3;
+            });
+        });
+        cut.Contains("colspan=\"3\"");
+        Assert.Equal(BreakPoint.Large, point);
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.AdditionalAttributes, new Dictionary<string, object>()
+            {
+                { "colspan", "4" }
+            });
+            pb.Add(a => a.ColspanCallback, null);
+        });
+        cut.Contains("colspan=\"4\"");
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.AdditionalAttributes, new Dictionary<string, object>()
+            {
+                { "colspan", "4" }
+            });
+            pb.Add(a => a.ColspanCallback, null);
+        });
+        cut.Contains("colspan=\"4\"");
+    }
+
     [Fact]
     public void Text_Ok()
     {
         var ds = new List<Foo>()
         {
-            new Foo() { Count = 1 },
-            new Foo() { Count = 2 },
+            new() { Count = 1 },
+            new() { Count = 2 },
         };
 
         var cut = Context.RenderComponent<TableFooterCell>(pb =>
@@ -77,9 +184,9 @@ public class TableFooterCellTest : TestBase
     {
         var ds = new List<Foo>()
         {
-            new Foo() { Count = 1 },
-            new Foo() { Count = 2 },
-            new Foo() { Count = 3 },
+            new() { Count = 1 },
+            new() { Count = 2 },
+            new() { Count = 3 },
         };
         var cut = Context.RenderComponent<TableFooterCell>(pb =>
         {
@@ -95,9 +202,9 @@ public class TableFooterCellTest : TestBase
     {
         var ds = new List<Foo>()
         {
-            new Foo() { Count = 1 },
-            new Foo() { Count = 2 },
-            new Foo() { Count = 3 },
+            new() { Count = 1 },
+            new() { Count = 2 },
+            new() { Count = 3 },
         };
 
         var cut = Context.RenderComponent<TableFooterCell>(pb =>
@@ -115,13 +222,13 @@ public class TableFooterCellTest : TestBase
     [InlineData(AggregateType.Count, "3")]
     [InlineData(AggregateType.Max, "3")]
     [InlineData(AggregateType.Min, "1")]
-    public void Aggegate_Ok(AggregateType aggregate, string expected)
+    public void Aggregate_Ok(AggregateType aggregate, string expected)
     {
         var ds = new List<Foo>()
         {
-            new Foo() { Count = 1 },
-            new Foo() { Count = 2 },
-            new Foo() { Count = 3 },
+            new() { Count = 1 },
+            new() { Count = 2 },
+            new() { Count = 3 },
         };
 
         var cut = Context.RenderComponent<TableFooterCell>(pb =>
@@ -134,7 +241,7 @@ public class TableFooterCellTest : TestBase
     }
 
     [Fact]
-    public void Aggegate_Customer()
+    public void Aggregate_Customer()
     {
         var ds = new List<MockFoo>()
         {
@@ -157,13 +264,13 @@ public class TableFooterCellTest : TestBase
     }
 
     [Fact]
-    public void Aggegate_Empty()
+    public void Aggregate_Empty()
     {
         var ds = new List<Foo>()
         {
-            new Foo() { Count = 1 },
-            new Foo() { Count = 2 },
-            new Foo() { Count = 3 },
+            new() { Count = 1 },
+            new() { Count = 2 },
+            new() { Count = 3 },
         };
 
         var cut = Context.RenderComponent<TableFooterCell>(pb =>
@@ -269,6 +376,44 @@ public class TableFooterCellTest : TestBase
             pb.Add(a => a.Field, nameof(MockFoo.Name));
             pb.Add(a => a.Aggregate, AggregateType.Average);
         });
+    }
+
+    [Fact]
+    public void FormatString_Ok()
+    {
+        var ds = new List<MockFoo>()
+        {
+            new() { DecimalCount = 1.1m },
+            new() { DecimalCount = 2.2m },
+            new() { DecimalCount = 3.3m },
+        };
+        var cut = Context.RenderComponent<TableFooterCell>(pb =>
+        {
+            pb.AddCascadingValue<object>("TableFooterContext", ds);
+            pb.Add(a => a.Field, nameof(MockFoo.DecimalCount));
+            pb.Add(a => a.Aggregate, AggregateType.Average);
+            pb.Add(a => a.FormatString, "#.00");
+        });
+        cut.Contains("2.20");
+    }
+
+    [Fact]
+    public void Formatter_Ok()
+    {
+        var ds = new List<MockFoo>()
+        {
+            new() { DecimalCount = 1.1m },
+            new() { DecimalCount = 2.2m },
+            new() { DecimalCount = 3.3m },
+        };
+        var cut = Context.RenderComponent<TableFooterCell>(pb =>
+        {
+            pb.AddCascadingValue<object>("TableFooterContext", ds);
+            pb.Add(a => a.Field, nameof(MockFoo.DecimalCount));
+            pb.Add(a => a.Aggregate, AggregateType.Average);
+            pb.Add(a => a.Formatter, v => Task.FromResult(v?.ToString()));
+        });
+        cut.Contains("2.2");
     }
 
     private class MockFoo

@@ -1,8 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
-
-using BootstrapBlazor.Shared;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 
@@ -65,8 +64,8 @@ public class DropdownTest : BootstrapBlazorTestBase
         {
             pb.Add(a => a.Items, new List<SelectedItem>
             {
-                new SelectedItem("1", "Test1"),
-                new SelectedItem("2", "Test2")
+                new("1", "Test1"),
+                new("2", "Test2")
             });
             pb.Add(a => a.IsFixedButtonText, true);
         });
@@ -99,26 +98,6 @@ public class DropdownTest : BootstrapBlazorTestBase
         });
         items = cut.FindAll(".dropdown-item");
         Assert.Equal(2, items.Count);
-    }
-
-    [Fact]
-    public void DropdownType_ButtonGroup()
-    {
-        var cut = Context.RenderComponent<Dropdown<EnumEducation>>(pb =>
-        {
-            pb.Add(a => a.DropdownType, DropdownType.ButtonGroup);
-        });
-        Assert.Contains("btn-group", cut.Markup);
-    }
-
-    [Fact]
-    public void DropdownType_DropdownMenu()
-    {
-        var cut = Context.RenderComponent<Dropdown<EnumEducation>>(pb =>
-        {
-            pb.Add(a => a.DropdownType, DropdownType.DropdownMenu);
-        });
-        Assert.Contains("class=\"dropdown\"", cut.Markup);
     }
 
     [Fact]
@@ -178,8 +157,8 @@ public class DropdownTest : BootstrapBlazorTestBase
         {
             pb.Add(a => a.Items, new SelectedItem[]
             {
-                new SelectedItem("1", "Test1"),
-                new SelectedItem("2", "Test2")
+                new("1", "Test1"),
+                new("2", "Test2")
             });
             pb.Add(a => a.Value, "2");
             pb.Add(a => a.OnSelectedItemChanged, item =>
@@ -227,8 +206,8 @@ public class DropdownTest : BootstrapBlazorTestBase
         {
             pb.Add(a => a.Items, new SelectedItem[]
             {
-                new SelectedItem("1", "Test1") { GroupName = "Test1" },
-                new SelectedItem("2", "Test2") { GroupName = "Test2" }
+                new("1", "Test1") { GroupName = "Test1" },
+                new("2", "Test2") { GroupName = "Test2" }
             });
             pb.Add(a => a.Value, "2");
             pb.Add(a => a.ItemTemplate, item => builder =>
@@ -247,16 +226,39 @@ public class DropdownTest : BootstrapBlazorTestBase
     {
         var cut = Context.RenderComponent<Dropdown<string>>(pb =>
         {
-            pb.Add(a => a.IsDisabled, true);
+            pb.Add(a => a.IsDisabled, false);
             pb.Add(a => a.Items, new SelectedItem[]
             {
-                new SelectedItem("1", "Test1") { IsDisabled = true },
-                new SelectedItem("2", "Test2")
+                new("1", "Test1") { IsDisabled = true },
+                new("2", "Test2")
             });
         });
-        // 禁用组件不生成 下拉菜单
-        cut.DoesNotContain("dropdown-menu");
+        cut.Contains("<div class=\"dropdown-item disabled\">Test1</div>");
+    }
 
-        cut.SetParametersAndRender(pb => pb.Add(a => a.IsDisabled, false));
+    [Fact]
+    public void ItemsTemplate_Ok()
+    {
+        var cut = Context.RenderComponent<Dropdown<string>>(pb =>
+        {
+            pb.Add(a => a.ItemsTemplate, new RenderFragment(builder =>
+            {
+                builder.AddContent(0, new MarkupString("<div>test-items-template</div>"));
+            }));
+        });
+        cut.Contains("<div>test-items-template</div>");
+    }
+
+    [Fact]
+    public void ButtonTemplate_Ok()
+    {
+        var cut = Context.RenderComponent<Dropdown<string>>(pb =>
+        {
+            pb.Add(a => a.ButtonTemplate, new RenderFragment<SelectedItem?>(item => builder =>
+            {
+                builder.AddContent(0, new MarkupString("<span>test-button-template</span>"));
+            }));
+        });
+        cut.Contains("<span>test-button-template</span>");
     }
 }

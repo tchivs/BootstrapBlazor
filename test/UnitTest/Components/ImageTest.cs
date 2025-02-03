@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 
@@ -11,11 +12,12 @@ public class ImageTest : BootstrapBlazorTestBase
     {
         var cut = Context.RenderComponent<ImageViewer>(pb =>
         {
-            pb.Add(a => a.Url, "https://www.blazor.zone/_content/BootstrapBlazor.Shared/images/logo.png");
+            pb.Add(a => a.PreviewIndex, 0);
+            pb.Add(a => a.Url, "https://www.blazor.zone/images/logo.png");
             pb.Add(a => a.ZIndex, 2000);
             pb.Add(a => a.FitMode, ObjectFitMode.Fill);
         });
-        cut.Contains("https://www.blazor.zone/_content/BootstrapBlazor.Shared/images/logo.png");
+        cut.Contains("https://www.blazor.zone/images/logo.png");
     }
 
     [Fact]
@@ -23,7 +25,7 @@ public class ImageTest : BootstrapBlazorTestBase
     {
         var cut = Context.RenderComponent<ImageViewer>(pb =>
         {
-            pb.Add(a => a.Url, "https://www.blazor.zone/_content/BootstrapBlazor.Shared/images/logo.png");
+            pb.Add(a => a.Url, "https://www.blazor.zone/images/logo.png");
             pb.Add(a => a.Alt, "alt-test");
         });
         cut.Contains("alt-test");
@@ -51,7 +53,7 @@ public class ImageTest : BootstrapBlazorTestBase
         var load = false;
         var cut = Context.RenderComponent<ImageViewer>(pb =>
         {
-            pb.Add(a => a.Url, "https://www.blazor.zone/_content/BootstrapBlazor.Shared/images/logo.png");
+            pb.Add(a => a.Url, "https://www.blazor.zone/images/logo.png");
             pb.Add(a => a.ShowPlaceHolder, true);
             pb.Add(a => a.OnLoadAsync, new Func<string, Task>(url =>
             {
@@ -67,12 +69,12 @@ public class ImageTest : BootstrapBlazorTestBase
     }
 
     [Fact]
-    public async Task HandleError_Ok()
+    public void HandleError_Ok()
     {
         var error = false;
         var cut = Context.RenderComponent<ImageViewer>(pb =>
         {
-            pb.Add(a => a.Url, "https://www.blazor.zone/_content/BootstrapBlazor.Shared/images/logo1.png");
+            pb.Add(a => a.Url, "https://www.blazor.zone/images/logo1.png");
             pb.Add(a => a.HandleError, true);
             pb.Add(a => a.OnErrorAsync, new Func<string, Task>(url =>
             {
@@ -83,10 +85,14 @@ public class ImageTest : BootstrapBlazorTestBase
         cut.Contains("d-none");
 
         // trigger error event
-        var img = cut.Find("img");
-        await cut.InvokeAsync(() => img.Error());
+        cut.InvokeAsync(() =>
+        {
+            var img = cut.Find("img");
+            img.Error();
+        });
         Assert.True(error);
 
+        error = false;
         cut.SetParametersAndRender(pb =>
         {
             pb.Add(a => a.HandleError, false);
@@ -95,6 +101,13 @@ public class ImageTest : BootstrapBlazorTestBase
                 builder.AddContent(0, "error-template");
             }));
         });
+
+        cut.InvokeAsync(() =>
+        {
+            var img = cut.Find("img");
+            img.Error();
+        });
+        Assert.True(error);
         cut.Contains("error-template");
     }
 
@@ -103,10 +116,31 @@ public class ImageTest : BootstrapBlazorTestBase
     {
         var cut = Context.RenderComponent<ImageViewer>(pb =>
         {
-            pb.Add(a => a.Url, "https://www.blazor.zone/_content/BootstrapBlazor.Shared/images/logo.png");
+            pb.Add(a => a.Url, "https://www.blazor.zone/images/logo.png");
             pb.Add(a => a.IsAsync, true);
-            pb.Add(a => a.PreviewList, new List<string> { "v1", "v2" });
+            pb.Add(a => a.PreviewList, ["v1", "v2"]);
         });
         cut.Contains("bb-previewer collapse active");
+    }
+
+    [Fact]
+    public void IsIntersectionObserver_Ok()
+    {
+        var cut = Context.RenderComponent<ImageViewer>(pb =>
+        {
+            pb.Add(a => a.Url, "https://www.blazor.zone/images/logo.png");
+            pb.Add(a => a.IsIntersectionObserver, true);
+        });
+        cut.DoesNotContain("src");
+    }
+
+    [Fact]
+    public void ImagerViewer_Show()
+    {
+        var cut = Context.RenderComponent<ImagePreviewer>(pb =>
+        {
+            pb.Add(a => a.PreviewList, ["v1", "v2"]);
+        });
+        cut.Instance.Show();
     }
 }

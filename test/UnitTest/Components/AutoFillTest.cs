@@ -1,10 +1,9 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using BootstrapBlazor.Shared;
 using Microsoft.AspNetCore.Components.Web;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
 namespace UnitTest.Components;
@@ -25,6 +24,22 @@ public class AutoFillTest : BootstrapBlazorTestBase
     }
 
     [Fact]
+    public void Items_Ok()
+    {
+        var cut = Context.RenderComponent<AutoFill<Foo>>();
+        Assert.Contains("<div class=\"auto-complete auto-fill\"", cut.Markup);
+        var menus = cut.FindAll(".dropdown-item");
+        Assert.Single(menus);
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.ShowNoDataTip, false);
+        });
+        menus = cut.FindAll(".dropdown-item");
+        Assert.Empty(menus);
+    }
+
+    [Fact]
     public void ShowLabel_Ok()
     {
         var cut = Context.RenderComponent<AutoFill<Foo>>(pb =>
@@ -38,269 +53,257 @@ public class AutoFillTest : BootstrapBlazorTestBase
     }
 
     [Fact]
-    public void NullItems_Ok()
+    public void ItemTemplate_Ok()
     {
-        var cut = Context.RenderComponent<AutoFill<Foo>>();
-        Assert.Contains("dropdown-menu", cut.Markup);
+        var items = new List<Foo>() { new() { Name = "test1" }, new() { Name = "test2" } };
+        var cut = Context.RenderComponent<AutoFill<Foo>>(pb =>
+        {
+            pb.Add(a => a.Items, items);
+            pb.Add(a => a.ItemTemplate, item => builder =>
+            {
+                builder.AddContent(0, $"Template-{item.Name}");
+            });
+        });
+
+        Assert.Contains("Template-test1", cut.Markup);
+        Assert.Contains("Template-test2", cut.Markup);
     }
 
     [Fact]
-    public void OnCustomFilter_Ok()
+    public async Task OnCustomFilter_Ok()
     {
         var filtered = false;
         var cut = Context.RenderComponent<AutoFill<Foo>>(pb =>
         {
             pb.Add(a => a.Value, Model);
             pb.Add(a => a.Items, Items);
-            pb.Add(a => a.OnCustomFilter, new Func<string, Task<IEnumerable<Foo>>>(key =>
+            pb.Add(a => a.OnCustomFilter, key =>
             {
                 filtered = true;
                 var items = Foo.GenerateFoo(Localizer, 3);
                 return Task.FromResult(items.AsEnumerable());
-            }));
+            });
         });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "t" });
+        await cut.InvokeAsync(() => cut.Instance.TriggerFilter("t"));
         Assert.True(filtered);
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(pb => pb.OnCustomFilter, null!);
+        });
+        await cut.InvokeAsync(() => cut.Instance.TriggerFilter(""));
+        var items = cut.FindAll(".dropdown-item");
+        Assert.Equal(2, items.Count);
     }
 
     [Fact]
-    public void Escape_Ok()
+    public void SkipEnter_Ok()
     {
-        var escTrigger = false;
-        var cut = Context.RenderComponent<AutoFill<Foo>>(pb =>
+        var cut = Context.RenderComponent<AutoComplete>(pb =>
         {
-            pb.Add(a => a.Value, Model);
-            pb.Add(a => a.Items, Items);
-            pb.Add(a => a.SkipEsc, true);
-            pb.Add(a => a.OnEscAsync, new Func<Foo, Task>(foo =>
-           {
-               escTrigger = true;
-               return Task.CompletedTask;
-           }));
+            pb.Add(a => a.SkipEnter, false);
         });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "t" });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "Escape" });
-        Assert.False(escTrigger);
+        cut.DoesNotContain("data-bb-skip-enter");
 
         cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.SkipEnter, true);
+        });
+        cut.Contains("data-bb-skip-enter=\"true\"");
+    }
+
+    [Fact]
+    public void SkipEsc_Ok()
+    {
+        var cut = Context.RenderComponent<AutoFill<Foo>>(pb =>
         {
             pb.Add(a => a.SkipEsc, false);
         });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "t" });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "Escape" });
-        Assert.True(escTrigger);
-    }
+        cut.DoesNotContain("data-bb-skip-esc");
 
-    [Fact]
-    public void Enter_Ok()
-    {
-        var enterTrigger = false;
-        var cut = Context.RenderComponent<AutoFill<Foo>>(pb =>
-        {
-            pb.Add(a => a.Value, Model);
-            pb.Add(a => a.Items, Items);
-            pb.Add(a => a.SkipEnter, true);
-            pb.Add(a => a.OnEnterAsync, new Func<Foo, Task>(foo =>
-            {
-                enterTrigger = true;
-                return Task.CompletedTask;
-            }));
-        });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "t" });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "Enter" });
-        Assert.False(enterTrigger);
-
-        Foo? selectedItem = null;
         cut.SetParametersAndRender(pb =>
         {
-            pb.Add(a => a.SkipEnter, false);
-            pb.Add(a => a.OnSelectedItemChanged, new Func<Foo, Task>(foo =>
-            {
-                selectedItem = foo;
-                return Task.CompletedTask;
-            }));
+            pb.Add(a => a.SkipEsc, true);
         });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "t" });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "Enter" });
-        Assert.True(enterTrigger);
-        Assert.NotNull(selectedItem);
+        cut.Contains("data-bb-skip-esc=\"true\"");
     }
 
     [Fact]
-    public void OnSelectedItemChanged_Ok()
+    public void ScrollIntoViewBehavior_Ok()
+    {
+        var cut = Context.RenderComponent<AutoFill<Foo>>(pb =>
+        {
+            pb.Add(a => a.ScrollIntoViewBehavior, ScrollIntoViewBehavior.Smooth);
+        });
+        cut.DoesNotContain("data-bb-scroll-behavior");
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.ScrollIntoViewBehavior, ScrollIntoViewBehavior.Auto);
+        });
+        cut.Contains("data-bb-scroll-behavior=\"auto\"");
+    }
+
+    [Fact]
+    public async Task OnSelectedItemChanged_Ok()
     {
         Foo? selectedItem = null;
         var cut = Context.RenderComponent<AutoFill<Foo>>(pb =>
         {
             pb.Add(a => a.Value, Model);
             pb.Add(a => a.Items, Items);
-            pb.Add(a => a.OnSelectedItemChanged, new Func<Foo, Task>(foo =>
+            pb.Add(a => a.OnSelectedItemChanged, foo =>
             {
                 selectedItem = foo;
                 return Task.CompletedTask;
-            }));
+            });
         });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "t" });
-        cut.Find(".dropdown-item").MouseDown(new MouseEventArgs());
+        var item = cut.Find(".dropdown-item");
+        await cut.InvokeAsync(() => item.Click());
         Assert.NotNull(selectedItem);
     }
 
     [Fact]
-    public void KeyUp_Test()
+    public async Task OnGetDisplayText_Ok()
     {
         var cut = Context.RenderComponent<AutoFill<Foo>>(pb =>
         {
             pb.Add(a => a.Value, Model);
-            pb.Add(a => a.Items, Items);
-        });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "t" });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "ArrowUp" });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "ArrowUp" });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "ArrowUp" });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "ArrowDown" });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "ArrowDown" });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "ArrowDown" });
-    }
-
-    [Fact]
-    public void DisplayCount_Ok()
-    {
-        var cut = Context.RenderComponent<AutoFill<Foo>>(pb =>
-        {
-            pb.Add(a => a.Value, Model);
-            pb.Add(a => a.Items, Items);
-            pb.Add(a => a.IsLikeMatch, true);
-            pb.Add(a => a.IgnoreCase, false);
-            pb.Add(a => a.DisplayCount, 2);
-        });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "Z" });
-        Assert.Equal(2, cut.FindAll(".dropdown-item").Count);
-    }
-
-    [Fact]
-    public void OnGetDisplayText_Null()
-    {
-        var v = new AutoFillNullStringMock();
-        var cut = Context.RenderComponent<AutoFill<AutoFillNullStringMock?>>(pb =>
-        {
-            pb.Add(a => a.IgnoreCase, true);
-            pb.Add(a => a.Value, v);
-            pb.Add(a => a.Items, new List<AutoFillNullStringMock>
-            {
-                new AutoFillNullStringMock() { Value = "1" },
-                new AutoFillNullStringMock() { Value = "2" },
-            });
-            pb.Add(a => a.Template, v => builder =>
-            {
-                builder.OpenElement(0, "div");
-                builder.AddContent(1, v!.Value);
-                builder.CloseElement();
-            });
-        });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "1" });
-        cut.Find(".dropdown-item").MouseDown(new MouseEventArgs());
-        Assert.Equal("1", cut.Instance.Value!.Value);
-
-        cut.SetParametersAndRender(pb =>
-        {
-            pb.Add(a => a.Items, new List<AutoFillNullStringMock?>
-            {
-                null,
-                new AutoFillNullStringMock() { Value = "2" },
-            });
-            pb.Add(a => a.Template, (RenderFragment<AutoFillNullStringMock?>?)null);
-        });
-        cut.Find(".form-control").KeyUp(new KeyboardEventArgs() { Key = "2" });
-        Assert.Equal(2, cut.FindAll(".dropdown-item").Count);
-    }
-
-    [Fact]
-    public void OnGetDisplayText_Ok()
-    {
-        var cut = Context.RenderComponent<AutoFill<Foo>>(pb =>
-        {
-            pb.Add(a => a.Value, Model);
-            pb.Add(a => a.Items, Items);
-            pb.Add(a => a.OnGetDisplayText, foo => foo.Name ?? "");
+            pb.Add(a => a.Items, new List<Foo> { null!, new() { Name = "Test" } });
+            pb.Add(a => a.OnGetDisplayText, foo => foo?.Name);
         });
         var input = cut.Find("input");
         Assert.Equal("张三 1000", input.Attributes["value"]?.Value);
-    }
 
-    [Fact]
-    public void Debounce_Ok()
-    {
-        var cut = Context.RenderComponent<AutoFill<Foo>>(pb =>
-        {
-            pb.Add(a => a.Value, Model);
-            pb.Add(a => a.Items, Items);
-            pb.Add(a => a.Debounce, 200);
-        });
-    }
-
-    [Fact]
-    public async Task ShowDropdownListOnFocus_Ok()
-    {
-        var cut = Context.RenderComponent<AutoFill<Foo>>(pb =>
-        {
-            pb.Add(a => a.Value, Model);
-            pb.Add(a => a.Items, Items);
-            pb.Add(a => a.ShowDropdownListOnFocus, false);
-        });
-
-        // 获得焦点时不会自动弹出下拉框
-        var input = cut.Find("input");
-        await cut.InvokeAsync(() => input.FocusAsync(new FocusEventArgs()));
-
-        var menu = cut.Find("ul");
-        Assert.Equal("dropdown-menu", menu.ClassList.ToString());
-
-        // 获得焦点时自动弹出下拉框
         cut.SetParametersAndRender(pb =>
         {
-            pb.Add(a => a.ShowDropdownListOnFocus, true);
+            pb.Add(a => a.OnGetDisplayText, null!);
         });
-        input = cut.Find("input");
-        await cut.InvokeAsync(() => input.FocusAsync(new FocusEventArgs()));
-        menu = cut.Find("ul");
-        Assert.Equal("dropdown-menu show", menu.ClassList.ToString());
+        await cut.InvokeAsync(() => cut.Instance.TriggerChange("t"));
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.IsLikeMatch, true);
+        });
+        await cut.InvokeAsync(() => cut.Instance.TriggerChange("t"));
     }
 
     [Fact]
-    public void ValidateForm_Ok()
+    public async Task IgnoreCase_Ok()
     {
-        var v = "";
-        IEnumerable<string> items = new List<string>() { "test1", "test2" };
-        var cut = Context.RenderComponent<ValidateForm>(pb =>
+        var items = new List<Foo>() { new() { Name = "task1" }, new() { Name = "task2" }, new() { Name = "Task3" }, new() { Name = "Task4" } };
+        var cut = Context.RenderComponent<AutoFill<Foo>>(builder =>
         {
-            pb.Add(a => a.Model, new Foo());
-            pb.AddChildContent<AutoFill<string>>(pb =>
-            {
-                pb.Add(a => a.Items, items);
-                pb.Add(a => a.OnCustomFilter, key =>
-                {
-                    v = key;
-                    return Task.FromResult(items);
-                });
-            });
+            builder.Add(a => a.Items, items);
+            builder.Add(a => a.IgnoreCase, true);
+            builder.Add(a => a.OnGetDisplayText, foo => foo?.Name);
         });
 
-        // Trigger js invoke
-        var comp = cut.FindComponent<AutoFill<string>>().Instance;
-        comp.TriggerOnChange("v");
-        var input = cut.Find("input");
-        cut.InvokeAsync(() => input.KeyUp("Enter"));
-        Assert.Equal("v", v);
+        await cut.InvokeAsync(() => cut.Instance.TriggerFilter("t"));
+        var menus = cut.FindAll(".dropdown-item");
+        Assert.Equal(4, menus.Count);
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.DisplayCount, 2);
+        });
+        await cut.InvokeAsync(() => cut.Instance.TriggerFilter("t"));
+        menus = cut.FindAll(".dropdown-item");
+        Assert.Equal(2, menus.Count);
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.IgnoreCase, false);
+            pb.Add(a => a.DisplayCount, null);
+        });
+        await cut.InvokeAsync(() => cut.Instance.TriggerFilter("t"));
+        menus = cut.FindAll(".dropdown-item");
+        Assert.Equal(2, menus.Count);
     }
 
-    class AutoFillNullStringMock
+    [Fact]
+    public async Task IsLikeMatch_Ok()
     {
-        [NotNull]
-        public string? Value { get; set; }
-
-        public override string? ToString()
+        var items = new List<Foo>() { new() { Name = "task1" }, new() { Name = "task2" }, new() { Name = "Task3" }, new() { Name = "Task4" } };
+        var cut = Context.RenderComponent<AutoFill<Foo>>(builder =>
         {
-            return null;
-        }
+            builder.Add(a => a.Items, items);
+            builder.Add(a => a.IsLikeMatch, false);
+            builder.Add(a => a.OnGetDisplayText, foo => foo?.Name);
+        });
+
+        await cut.InvokeAsync(() => cut.Instance.TriggerFilter("t"));
+        var menus = cut.FindAll(".dropdown-item");
+        Assert.Equal(4, menus.Count);
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.DisplayCount, 2);
+        });
+        await cut.InvokeAsync(() => cut.Instance.TriggerFilter("t"));
+        menus = cut.FindAll(".dropdown-item");
+        Assert.Equal(2, menus.Count);
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.IsLikeMatch, true);
+            pb.Add(a => a.DisplayCount, null);
+        });
+        await cut.InvokeAsync(() => cut.Instance.TriggerFilter("a"));
+        menus = cut.FindAll(".dropdown-item");
+        Assert.Equal(4, menus.Count);
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.OnGetDisplayText, null);
+            pb.Add(a => a.IsLikeMatch, false);
+        });
+        await cut.InvokeAsync(() => cut.Instance.TriggerFilter("t"));
+        menus = cut.FindAll(".dropdown-item");
+        Assert.Single(menus);
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.OnGetDisplayText, null);
+            pb.Add(a => a.IsLikeMatch, true);
+        });
+        await cut.InvokeAsync(() => cut.Instance.TriggerFilter("t"));
+        menus = cut.FindAll(".dropdown-item");
+        Assert.Single(menus);
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.OnGetDisplayText, foo => null);
+            pb.Add(a => a.IsLikeMatch, false);
+        });
+        await cut.InvokeAsync(() => cut.Instance.TriggerFilter("t"));
+        menus = cut.FindAll(".dropdown-item");
+        Assert.Single(menus);
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.OnGetDisplayText, foo => null);
+            pb.Add(a => a.IsLikeMatch, true);
+        });
+        await cut.InvokeAsync(() => cut.Instance.TriggerFilter("t"));
+        menus = cut.FindAll(".dropdown-item");
+        Assert.Single(menus);
+    }
+
+    [Fact]
+    public void ShowDropdownListOnFocus_Ok()
+    {
+        var items = new List<Foo>() { new() { Name = "test1" }, new() { Name = "test2" } };
+        var cut = Context.RenderComponent<AutoFill<Foo>>(pb =>
+        {
+            pb.Add(a => a.Items, items);
+        });
+        cut.Contains("data-bb-auto-dropdown-focus=\"true\"");
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.ShowDropdownListOnFocus, false);
+        });
+        cut.DoesNotContain("data-bb-auto-dropdown-focus");
     }
 }

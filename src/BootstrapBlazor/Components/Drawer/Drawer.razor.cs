@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -17,12 +18,17 @@ public partial class Drawer
         .AddClassFromAttributes(AdditionalAttributes)
         .Build();
 
+    private string? StyleString => CssBuilder.Default()
+        .AddStyle("--bb-drawer-position", Position)
+        .AddStyleFromAttributes(AdditionalAttributes)
+        .Build();
+
     /// <summary>
     /// 获得 抽屉 Style 字符串
     /// </summary>
     private string? DrawerStyleString => CssBuilder.Default()
-        .AddClass($"width: {Width};", !string.IsNullOrEmpty(Width) && Placement != Placement.Top && Placement != Placement.Bottom)
-        .AddClass($"height: {Height};", !string.IsNullOrEmpty(Height) && (Placement == Placement.Top || Placement == Placement.Bottom))
+        .AddStyle("--bb-drawer-width", Width, Placement != Placement.Top && Placement != Placement.Bottom)
+        .AddStyle("--bb-drawer-height", Height, Placement == Placement.Top || Placement == Placement.Bottom)
         .Build();
 
     /// <summary>
@@ -84,10 +90,42 @@ public partial class Drawer
     public Placement Placement { get; set; } = Placement.Left;
 
     /// <summary>
+    /// 获得/设置 组件定位位置 默认 null 未设置 使用样式内置定位 fixed 可更改为 absolute
+    /// </summary>
+    [Parameter]
+    public string? Position { get; set; }
+
+    /// <summary>
     /// 获得/设置 子组件
     /// </summary>
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// 获得/设置 是否允许调整大小 默认 false
+    /// </summary>
+    [Parameter]
+    public bool AllowResize { get; set; }
+
+    /// <summary>
+    /// 获得/设置 关闭抽屉回调委托 默认 null
+    /// </summary>
+    [Parameter]
+    public Func<Task>? OnCloseAsync { get; set; }
+
+    /// <summary>
+    /// 获得/设置 抽屉内容相关数据 多用于传值
+    /// </summary>
+    [Parameter]
+    public object? BodyContext { get; set; }
+
+    /// <summary>
+    /// 获得/设置 是否支持键盘 ESC 关闭当前弹窗 默认 false
+    /// </summary>
+    [Parameter]
+    public bool IsKeyboard { get; set; }
+
+    private string? KeyboardString => IsKeyboard ? "true" : null;
 
     /// <summary>
     /// <inheritdoc/>
@@ -98,11 +136,17 @@ public partial class Drawer
     {
         await base.OnAfterRenderAsync(firstRender);
 
-        if (!firstRender)
+        if (!firstRender || IsOpen)
         {
             await InvokeVoidAsync("execute", Id, IsOpen);
         }
     }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    /// <returns></returns>
+    protected override Task InvokeInitAsync() => InvokeVoidAsync("init", Id, Interop, nameof(Close));
 
     /// <summary>
     /// 点击背景遮罩方法
@@ -111,8 +155,11 @@ public partial class Drawer
     {
         if (IsBackdrop)
         {
+            if (OnClickBackdrop != null)
+            {
+                await OnClickBackdrop();
+            }
             await Close();
-            if (OnClickBackdrop != null) await OnClickBackdrop.Invoke();
         }
     }
 
@@ -120,9 +167,14 @@ public partial class Drawer
     /// 关闭抽屉方法
     /// </summary>
     /// <returns></returns>
+    [JSInvokable]
     public async Task Close()
     {
         IsOpen = false;
+        if (OnCloseAsync != null)
+        {
+            await OnCloseAsync();
+        }
         if (IsOpenChanged.HasDelegate)
         {
             await IsOpenChanged.InvokeAsync(IsOpen);

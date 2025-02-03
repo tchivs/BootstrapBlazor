@@ -1,32 +1,37 @@
 ﻿@namespace BootstrapBlazor.Components
 @typeparam TValue
-@inherits BootstrapInputBase<TValue>
+@inherits PopoverCompleteBase<TValue>
 
 @if (IsShowLabel)
 {
-    <BootstrapLabel required="@Required" for="@Id" ShowLabelTooltip="ShowLabelTooltip" Value="@DisplayText" />
+    <BootstrapLabel required="@Required" for="@InputId" ShowLabelTooltip="ShowLabelTooltip" Value="@DisplayText" />
 }
-<div class="@ClassString" @ref="AutoFillElement">
-    <input @attributes="AdditionalAttributes" id="@Id" class="@ClassName" autocomplete="off" type="@Type" placeholder="@PlaceHolder" @bind-value="@InputString" @bind-value:event="oninput" @onblur="OnBlur" @onkeyup="OnKeyUp" @onfocus="OnFocus" @ref="FocusElement" />
-    <i class="@Icon"></i>
-    <ul class="@DropdownMenuClassString">
-        @if (FilterItems.Any())
+<div class="@ClassString" id="@Id">
+    <input @attributes="AdditionalAttributes" id="@InputId" class="@ClassName" autocomplete="off" type="text"
+           data-bs-toggle="@ToggleString" data-bs-placement="@PlacementString"
+           data-bs-offset="@OffsetString" data-bs-custom-class="@CustomClassString"
+           data-bb-auto-dropdown-focus="@ShowDropdownListOnFocusString" data-bb-debounce="@DurationString"
+           data-bb-skip-esc="@SkipEscString" data-bb-skip-enter="@SkipEnterString"
+           data-bb-scroll-behavior="@ScrollIntoViewBehaviorString"
+           value="@_displayText"
+           placeholder="@PlaceHolder" disabled="@Disabled" @ref="FocusElement" />
+    <span class="form-select-append"><i class="@Icon"></i></span>
+    <span class="form-select-append ac-loading"><i class="@LoadingIcon"></i></span>
+    <ul class="dropdown-menu">
+        @foreach (var item in Rows)
         {
-            foreach (var item in FilterItems)
-            {
-                <li class="dropdown-item" @onmousedown="e => OnClickItem(item)">
-                    @if (Template != null)
-                    {
-                        @Template(item)
-                    }
-                    else
-                    {
-                        <div>@OnGetDisplayText(item)</div>
-                    }
-                </li>
-            }
+            <li @key="@item" class="dropdown-item" @onclick="() => OnClickItem(item)">
+                @if (ItemTemplate != null)
+                {
+                    @ItemTemplate(item)
+                }
+                else
+                {
+                    <div>@GetDisplayText(item)</div>
+                }
+            </li>
         }
-        else
+        @if (ShowNoDataTip && Rows.Count == 0)
         {
             <li class="dropdown-item">@NoDataTip</li>
         }

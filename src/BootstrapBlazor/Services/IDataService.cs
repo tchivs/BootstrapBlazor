@@ -1,13 +1,14 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
 /// IDataService 接口
 /// </summary>
-public interface IDataService<TModel> where TModel : class, new()
+public interface IDataService<TModel> where TModel : class
 {
     /// <summary>
     /// 新建数据方法
@@ -42,7 +43,7 @@ public interface IDataService<TModel> where TModel : class, new()
 /// <summary>
 /// 内部默认数据注入服务实现类
 /// </summary>
-internal class NullDataService<TModel> : DataServiceBase<TModel> where TModel : class, new()
+internal class NullDataService<TModel> : DataServiceBase<TModel> where TModel : class
 {
     /// <summary>
     /// 查询操作方法

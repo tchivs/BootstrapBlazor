@@ -356,8 +356,28 @@ src/**/*.xml
 
 # Coverage
 coverage*.xml
-tools/
 *.lutconfig
 
 # Upload Folder
 src/**/wwwroot/**/uploader
+
+# Wasm
+**/Wasm/**/wwwroot/css/
+**/Wasm/**/wwwroot/images/
+**/Wasm/**/wwwroot/lib/
+**/Wasm/**/wwwroot/models/
+**/Wasm/**/wwwroot/samples/
+**/Wasm/**/wwwroot/favicon.ico
+**/Wasm/**/wwwroot/favicon.png
+
+# npm
+**/package-lock.json
+
+# sass
+**/BootstrapBlazor/wwwroot/css/animate.min.css
+**/BootstrapBlazor/wwwroot/css/bootstrapblazor.min.css
+**/BootstrapBlazor/wwwroot/css/bootstrap.min.css
+**/BootstrapBlazor/wwwroot/css/bootstrap.rtl.min.css
+**/BootstrapBlazor/wwwroot/css/sweetalert2.css
+**/BootstrapBlazor/wwwroot/css/motronic.min.css
+**/BootstrapBlazor/wwwroot/css/nano.min.css

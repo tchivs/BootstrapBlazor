@@ -1,9 +1,8 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using BootstrapBlazor.Shared;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
 namespace UnitTest.Components;
@@ -71,12 +70,154 @@ public class TableFilterTest : BootstrapBlazorTestBase
             {
                 pb.Add(a => a.Items, new List<Cat>
                 {
-                    new Cat()
+                    new()
                 });
                 pb.Add(a => a.RenderMode, TableRenderMode.Table);
                 pb.Add(a => a.TableColumns, CreateCatTableColumns());
             });
         });
+    }
+
+    [Fact]
+    public async Task MultiFilter_Ok()
+    {
+        var cut = Context.RenderComponent<BootstrapBlazorRoot>(pb =>
+        {
+            pb.AddChildContent<Table<Cat>>(pb =>
+            {
+                pb.Add(a => a.Items, new List<Cat>
+                {
+                    new()
+                });
+                pb.Add(a => a.RenderMode, TableRenderMode.Table);
+                pb.Add(a => a.TableColumns, cat => builder =>
+                {
+                    var index = 0;
+                    builder.OpenComponent<TableColumn<Cat, string?>>(index++);
+                    builder.AddAttribute(index++, nameof(TableColumn<Cat, string?>.Field), cat.P8);
+                    builder.AddAttribute(index++, nameof(TableColumn<Cat, string?>.FieldExpression), Utility.GenerateValueExpression(cat, nameof(Cat.P8), typeof(string)));
+                    builder.AddAttribute(index++, nameof(TableColumn<Cat, string?>.Filterable), true);
+                    builder.AddAttribute(index++, nameof(TableColumn<Cat, string?>.FilterTemplate), new RenderFragment(b =>
+                    {
+                        b.OpenComponent<MultiFilter>(0);
+                        b.AddAttribute(1, nameof(MultiFilter.ShowSearch), true);
+                        b.AddAttribute(2, nameof(MultiFilter.OnGetItemsAsync), () => Task.FromResult(new List<SelectedItem>() { new("test1", "test1") }));
+                        b.AddAttribute(1, nameof(MultiFilter.AlwaysTriggerGetItems), true);
+                        b.CloseComponent();
+                    }));
+                    builder.CloseComponent();
+                });
+            });
+        });
+        cut.Contains("bb-multi-filter-loading");
+
+        var filter = cut.FindComponent<MultiFilter>();
+        filter.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.LoadingTemplate, "loading-template-test");
+        });
+        cut.Contains("loading-template-test");
+        await cut.InvokeAsync(() => filter.Instance.TriggerGetItemsCallback());
+
+        // 选中数据
+        var checkItems = cut.FindComponents<Checkbox<bool>>();
+        await cut.InvokeAsync(() => checkItems[1].Instance.SetValue(true));
+        await cut.InvokeAsync(() => filter.Instance.TriggerGetItemsCallback());
+    }
+
+    [Fact]
+    public void MultiFilter_Exception()
+    {
+        // 测试 Exception
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            Context.RenderComponent<MultiFilter>(pb =>
+            {
+                pb.Add(a => a.Items, new SelectedItem[] { new("test1", "test1"), new("test2", "test2") });
+                pb.Add(a => a.OnGetItemsAsync, () => Task.FromResult(new List<SelectedItem>() { new("test1", "test1") }));
+            });
+        });
+    }
+
+    [Fact]
+    public async Task MultipleFilter_Items()
+    {
+        var cut = Context.RenderComponent<BootstrapBlazorRoot>(pb =>
+        {
+            pb.AddChildContent<Table<Cat>>(pb =>
+            {
+                pb.Add(a => a.Items, new List<Cat>
+                {
+                    new()
+                });
+                pb.Add(a => a.RenderMode, TableRenderMode.Table);
+                pb.Add(a => a.TableColumns, cat => builder =>
+                {
+                    var index = 0;
+                    builder.OpenComponent<TableColumn<Cat, string?>>(index++);
+                    builder.AddAttribute(index++, nameof(TableColumn<Cat, string?>.Field), cat.P8);
+                    builder.AddAttribute(index++, nameof(TableColumn<Cat, string?>.FieldExpression), Utility.GenerateValueExpression(cat, nameof(Cat.P8), typeof(string)));
+                    builder.AddAttribute(index++, nameof(TableColumn<Cat, string?>.Filterable), true);
+                    builder.AddAttribute(index++, nameof(TableColumn<Cat, string?>.FilterTemplate), new RenderFragment(b =>
+                    {
+                        b.OpenComponent<MultiFilter>(0);
+                        b.AddAttribute(1, nameof(MultiFilter.ShowSearch), true);
+                        b.AddAttribute(2, nameof(MultiFilter.Items), new SelectedItem[] { new("test1", "test1"), new("test2", "test2") });
+                        b.CloseComponent();
+                    }));
+                    builder.CloseComponent();
+                });
+            });
+        });
+        cut.DoesNotContain("multi-filter-placeholder");
+        cut.DoesNotContain("multi-filter-All");
+
+        var filter = cut.FindComponent<MultiFilter>();
+        filter.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.SearchPlaceHolderText, "multi-filter-placeholder");
+            pb.Add(a => a.SelectAllText, "multi-filter-All");
+        });
+        cut.Contains("multi-filter-placeholder");
+        cut.Contains("multi-filter-All");
+
+        await cut.InvokeAsync(() => filter.Instance.Reset());
+
+        // 选中选项
+        var checkboxs = cut.FindComponents<Checkbox<bool>>();
+        Assert.Equal(3, checkboxs.Count);
+        await cut.InvokeAsync(() => checkboxs[2].Instance.SetState(CheckboxState.Checked));
+
+        FilterKeyValueAction? action = null;
+        await cut.InvokeAsync(() =>
+        {
+            action = filter.Instance.GetFilterConditions();
+        });
+        Assert.NotNull(action);
+        Assert.Equal(FilterLogic.Or, action.FilterLogic);
+        Assert.NotNull(action.Filters);
+        Assert.NotNull(action.Filters[0]);
+        Assert.Equal("test2", action.Filters[0].FieldValue);
+        Assert.Equal("P8", action.Filters[0].FieldKey);
+        Assert.Equal(CheckboxState.Indeterminate, checkboxs[0].Instance.State);
+
+        // 测试 Items 改变保持选项
+        filter.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.Items, new SelectedItem[] { new("test3", "test3"), new("test2", "test2") });
+        });
+        checkboxs = cut.FindComponents<Checkbox<bool>>();
+        Assert.Equal(3, checkboxs.Count);
+        checkboxs[2].Markup.Contains("checked=\"checked\"");
+
+        // 测试全选
+        await cut.InvokeAsync(() => checkboxs[0].Instance.SetState(CheckboxState.Checked));
+        await cut.InvokeAsync(() => checkboxs[0].Instance.SetState(CheckboxState.UnChecked));
+
+        // 测试搜索
+        var input = cut.Find(".bb-multi-filter-search");
+        await cut.InvokeAsync(() => input.Input("test02"));
+        await cut.InvokeAsync(() => input.Input(""));
     }
 
     [Fact]
@@ -103,7 +244,7 @@ public class TableFilterTest : BootstrapBlazorTestBase
         {
             pb.AddChildContent<Table<Foo>>(pb =>
             {
-                pb.Add(a => a.Items, new List<Foo>() { new Foo() });
+                pb.Add(a => a.Items, new List<Foo>() { new() });
                 pb.Add(a => a.RenderMode, TableRenderMode.Table);
                 pb.Add(a => a.ShowFilterHeader, true);
                 pb.Add(a => a.TableColumns, new RenderFragment<Foo>(foo => builder =>
@@ -159,11 +300,19 @@ public class TableFilterTest : BootstrapBlazorTestBase
         builder.AddAttribute(index++, nameof(TableColumn<Foo, IEnumerable<string>>.Field), foo.Hobby);
         builder.AddAttribute(index++, nameof(TableColumn<Foo, IEnumerable<string>>.Lookup), new List<SelectedItem>()
         {
-            new SelectedItem("1", "Test1"),
-            new SelectedItem("2", "Test2"),
+            new("1", "Test1"),
+            new("2", "Test2"),
         });
         builder.AddAttribute(index++, nameof(TableColumn<Foo, IEnumerable<string>>.FieldExpression), foo.GenerateValueExpression(nameof(Foo.Hobby), typeof(IEnumerable<string>)));
         builder.AddAttribute(index++, nameof(TableColumn<Foo, IEnumerable<string>>.Filterable), true);
+        builder.CloseComponent();
+
+        builder.OpenComponent<TableColumn<Foo, int>>(index++);
+        builder.AddAttribute(index++, nameof(TableColumn<Foo, int>.Field), foo.Id);
+        builder.AddAttribute(index++, nameof(TableColumn<Foo, int>.LookupServiceKey), "FooLookup");
+        builder.AddAttribute(index++, nameof(TableColumn<Foo, int>.LookupServiceData), new Foo());
+        builder.AddAttribute(index++, nameof(TableColumn<Foo, int>.FieldExpression), foo.GenerateValueExpression(nameof(Foo.Id), typeof(int)));
+        builder.AddAttribute(index++, nameof(TableColumn<Foo, int>.Filterable), true);
         builder.CloseComponent();
     };
 
@@ -192,7 +341,7 @@ public class TableFilterTest : BootstrapBlazorTestBase
         builder.AddAttribute(index++, nameof(TableColumn<Cat, double>.Field), cat.P4);
         builder.AddAttribute(index++, nameof(TableColumn<Cat, double>.FieldExpression), Utility.GenerateValueExpression(cat, nameof(Cat.P4), typeof(double)));
         builder.AddAttribute(index++, nameof(TableColumn<Cat, double>.Filterable), true);
-        builder.AddAttribute(index++, nameof(TableColumn<Cat, double>.Step), 0.02);
+        builder.AddAttribute(index++, nameof(TableColumn<Cat, double>.Step), "0.02");
         builder.CloseComponent();
 
         builder.OpenComponent<TableColumn<Cat, decimal>>(index++);
@@ -233,5 +382,7 @@ public class TableFilterTest : BootstrapBlazorTestBase
         public decimal P6 { get; set; }
 
         public Foo? P7 { get; set; }
+
+        public string? P8 { get; set; }
     }
 }

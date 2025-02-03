@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.Extensions.Localization;
 
@@ -24,8 +25,6 @@ public partial class PopConfirmButton
 
     private string TagName => IsLink ? "a" : "div";
 
-    private string? ElementType => IsLink ? null : "div";
-
     private string? CustomClassString => CssBuilder.Default(CustomClass)
         .AddClass("shadow", ShowShadow)
         .Build();
@@ -40,6 +39,8 @@ public partial class PopConfirmButton
     [NotNull]
     private IStringLocalizer<PopConfirmButton>? Localizer { get; set; }
 
+    private bool _renderTooltip;
+
     /// <summary>
     /// OnParametersSet 方法
     /// </summary>
@@ -50,7 +51,23 @@ public partial class PopConfirmButton
         ConfirmButtonText ??= Localizer[nameof(ConfirmButtonText)];
         CloseButtonText ??= Localizer[nameof(CloseButtonText)];
         Content ??= Localizer[nameof(Content)];
+
+        _renderTooltip = Tooltip == null && !string.IsNullOrEmpty(TooltipText);
     }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    /// <returns></returns>
+    public override Task ShowTooltip() => Task.CompletedTask;
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    /// <returns></returns>
+    public override Task RemoveTooltip() => Task.CompletedTask;
+
+    private string? ConfirmString => OnBeforeClick != null ? "true" : null;
 
     /// <summary>
     /// 显示确认弹窗方法
@@ -58,7 +75,12 @@ public partial class PopConfirmButton
     private async Task Show()
     {
         // 回调消费者逻辑 判断是否需要弹出确认框
-        if (await OnBeforeClick())
+        var show = true;
+        if (OnBeforeClick != null)
+        {
+            show = await OnBeforeClick();
+        }
+        if (show)
         {
             await InvokeVoidAsync("showConfirm", Id);
         }

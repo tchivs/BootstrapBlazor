@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.AspNetCore.Components.Routing;
 
@@ -32,9 +33,9 @@ public class MenuItem : NodeItem
     public string? Target { get; set; }
 
     /// <summary>
-    /// 获得/设置 匹配方式 默认 NavLinkMatch.All
+    /// 获得/设置 匹配方式 默认 NavLinkMatch.Prefix
     /// </summary>
-    public NavLinkMatch Match { get; set; } = NavLinkMatch.All;
+    public NavLinkMatch Match { get; set; } = NavLinkMatch.Prefix;
 
     /// <summary>
     /// 获得 当前菜单所在层次 从 0 开始
@@ -67,6 +68,19 @@ public class MenuItem : NodeItem
         if (Parent != null)
         {
             Indent = Parent.Indent + 1;
+        }
+    }
+
+    /// <summary>
+    /// 设置当前节点父节点展开
+    /// </summary>
+    protected internal virtual void SetCollapse(bool collapsed)
+    {
+        var parent = Parent;
+        while (parent != null)
+        {
+            parent.IsCollapsed = collapsed;
+            parent = parent.Parent;
         }
     }
 

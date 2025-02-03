@@ -1,9 +1,9 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using System.Collections;
-using System.Linq.Expressions;
 using System.Reflection;
 
 namespace BootstrapBlazor.Components;
@@ -11,22 +11,19 @@ namespace BootstrapBlazor.Components;
 /// <summary>
 /// Display 组件
 /// </summary>
-public partial class Display<TValue>
+public partial class Display<TValue> : ILookup
 {
     private string? ClassString => CssBuilder.Default("form-control is-display")
         .AddClassFromAttributes(AdditionalAttributes)
         .Build();
 
-    /// <summary>
-    /// 获得 显示文本
-    /// </summary>
-    protected string? CurrentTextAsString { get; set; }
+    private string? _displayText;
 
     /// <summary>
     /// 获得/设置 异步格式化字符串
     /// </summary>
     [Parameter]
-    public Func<TValue, Task<string>>? FormatterAsync { get; set; }
+    public Func<TValue, Task<string?>>? FormatterAsync { get; set; }
 
     /// <summary>
     /// 获得/设置 格式化字符串 如时间类型设置 yyyy-MM-dd
@@ -35,55 +32,61 @@ public partial class Display<TValue>
     public string? FormatString { get; set; }
 
     /// <summary>
-    /// 获得/设置 数据集用于 CheckboxList Select 组件 通过 Value 显示 Text 使用 默认 null
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
     public IEnumerable<SelectedItem>? Lookup { get; set; }
 
     /// <summary>
-    /// 获得/设置 LookupService 服务获取 Lookup 数据集合键值 常用于外键自动转换为名称操作
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public ILookupService? LookupService { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
     public string? LookupServiceKey { get; set; }
 
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public object? LookupServiceData { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public StringComparison LookupStringComparison { get; set; } = StringComparison.OrdinalIgnoreCase;
+
     [Inject]
     [NotNull]
-    private ILookupService? LookupService { get; set; }
+    private ILookupService? InjectLookupService { get; set; }
 
     /// <summary>
     /// 获得/设置 类型解析回调方法 组件泛型为 Array 时内部调用
     /// </summary>
     [Parameter]
-
     public Func<Assembly?, string, bool, Type?>? TypeResolver { get; set; }
 
     /// <summary>
-    /// SetParametersAsync 方法
+    /// 获得/设置 是否显示 Tooltip 多用于标签文字过长导致裁减时使用 默认 false 不显示
     /// </summary>
-    /// <param name="parameters"></param>
-    /// <returns></returns>
-    public override Task SetParametersAsync(ParameterView parameters)
-    {
-        parameters.SetParameterProperties(this);
-
-        if (!string.IsNullOrEmpty(LookupServiceKey))
-        {
-            Lookup = LookupService.GetItemsByKey(LookupServiceKey);
-        }
-
-        // For derived components, retain the usual lifecycle with OnInit/OnParametersSet/etc.
-        return base.SetParametersAsync(ParameterView.Empty);
-    }
+    [Parameter]
+    public bool ShowTooltip { get; set; }
 
     /// <summary>
-    /// OnParametersSetAsync 方法
+    /// <inheritdoc/>>
     /// </summary>
     /// <returns></returns>
     protected override async Task OnParametersSetAsync()
     {
         await base.OnParametersSetAsync();
 
-        CurrentTextAsString = await FormatTextAsString(Value);
+        _lookupData = null;
+        _displayText = await FormatDisplayText(Value);
     }
 
     /// <summary>
@@ -91,15 +94,15 @@ public partial class Display<TValue>
     /// </summary>
     /// <param name="value"></param>
     /// <returns></returns>
-    protected virtual async Task<string?> FormatTextAsString(TValue value) => FormatterAsync != null
+    private async Task<string?> FormatDisplayText(TValue value) => FormatterAsync != null
         ? await FormatterAsync(value)
         : (!string.IsNullOrEmpty(FormatString) && value != null
             ? Utility.Format(value, FormatString)
             : value == null
-                ? FormatValueString()
-                : FormatText(value));
+                ? await FormatValueString()
+                : await FormatText(value));
 
-    private string FormatText([DisallowNull] TValue value)
+    private async Task<string> FormatText([DisallowNull] TValue value)
     {
         string ret;
         var type = typeof(TValue);
@@ -109,118 +112,68 @@ public partial class Display<TValue>
         }
         else if (type.IsArray)
         {
-            ret = ConvertArrayToString(value);
+            ret = ArrayConvertToString(value);
         }
         else if (type.IsGenericType && type.IsAssignableTo(typeof(IEnumerable)))
         {
             // 泛型集合 IEnumerable<TValue>
-            ret = ConvertEnumerableToString(value);
+            ret = await ConvertEnumerableToString(value);
         }
         else
         {
-            ret = FormatValueString();
+            ret = await FormatValueString();
         }
         return ret;
     }
 
-    private string FormatValueString()
+    private async Task<string> FormatValueString()
     {
-        string? ret = null;
-
-        // 检查 数据源
-        var valueString = Value?.ToString();
-        if (Lookup != null)
+        var ret = Value?.ToString();
+        var lookup = await GetLookup();
+        if (lookup != null)
         {
-            ret = Lookup.FirstOrDefault(i => i.Value.Equals(valueString ?? "", StringComparison.OrdinalIgnoreCase))?.Text;
+            ret = lookup.FirstOrDefault(i => i.Value.Equals(ret, LookupStringComparison))?.Text;
         }
-        return ret ?? valueString ?? string.Empty;
+        return ret ?? string.Empty;
     }
 
-    private Func<TValue, string>? _converterArray;
-    /// <summary>
-    /// 获取属性方法 Lambda 表达式
-    /// </summary>
-    /// <returns></returns>
-    private string ConvertArrayToString(TValue value)
+    private Func<TValue, string>? _arrayConvertToString;
+    private string ArrayConvertToString(TValue value)
     {
-        return (_converterArray ??= ConvertArrayToStringLambda())(value);
+        _arrayConvertToString ??= LambdaExtensions.ArrayConvertToStringLambda<TValue>(TypeResolver).Compile();
+        return _arrayConvertToString(value);
+    }
 
-        Func<TValue, string> ConvertArrayToStringLambda()
+    private static Func<TValue, string>? _enumerableConvertToString;
+    private async Task<string> ConvertEnumerableToString(TValue value)
+    {
+        _enumerableConvertToString ??= LambdaExtensions.EnumerableConvertToStringLambda<TValue>().Compile();
+        var lookup = await GetLookup();
+        return lookup == null
+            ? _enumerableConvertToString(value)
+            : GetTextByValue(lookup, value);
+    }
+
+    private static Func<TValue, IEnumerable<string>>? _convertToStringEnumerable;
+    private static string GetTextByValue(IEnumerable<SelectedItem> lookup, TValue value)
+    {
+        _convertToStringEnumerable ??= LambdaExtensions.ConvertToStringEnumerableLambda<TValue>().Compile();
+        var source = _convertToStringEnumerable(value);
+        return string.Join(",", source.Aggregate(new List<string>(), (s, i) =>
         {
-            Func<TValue, string> ret = _ => "";
-            var param_p1 = Expression.Parameter(typeof(Array));
-            var target_type = typeof(TValue).UnderlyingSystemType;
-            var methodType = ResolveArrayType();
-            if (methodType != null)
+            var text = lookup.FirstOrDefault(d => d.Value.Equals(i, StringComparison.OrdinalIgnoreCase))?.Text;
+            if (text != null)
             {
-                // 调用 string.Join<T>(",", IEnumerable<T>) 方法
-                var method = typeof(string).GetMethods().Where(m => m.Name == "Join" && m.IsGenericMethod && m.GetParameters()[0].ParameterType == typeof(string)).First().MakeGenericMethod(methodType);
-                var body = Expression.Call(method, Expression.Constant(","), Expression.Convert(param_p1, target_type));
-                ret = Expression.Lambda<Func<TValue, string>>(body, param_p1).Compile();
+                s.Add(text);
             }
-            return ret;
-
-            Type? ResolveArrayType()
-            {
-                Type? ret = null;
-                var typeName = target_type.FullName;
-                if (!string.IsNullOrEmpty(typeName))
-                {
-                    typeName = typeName.Replace("[]", "");
-                    if (typeName.Contains('+'))
-                    {
-                        typeName = typeName.Split('+', StringSplitOptions.RemoveEmptyEntries).Last();
-                    }
-                    ret = Type.GetType(typeName, null, TypeResolver, false, true);
-                }
-                return ret;
-            }
-        }
+            return s;
+        }));
     }
 
-    private static Func<TValue, string>? _convertEnumerableToString;
-    private static Func<TValue, IEnumerable<string>>? _convertToEnumerableString;
-    /// <summary>
-    /// 获取属性方法 Lambda 表达式
-    /// </summary>
-    /// <returns></returns>
-    private string ConvertEnumerableToString(TValue value)
+    private IEnumerable<SelectedItem>? _lookupData;
+    private async Task<IEnumerable<SelectedItem>?> GetLookup()
     {
-        return Lookup == null
-            ? (_convertEnumerableToString ??= ConvertEnumerableToStringLambda())(value)
-            : GetTextByValue((_convertToEnumerableString ??= ConvertToEnumerableStringLambda())(value));
-
-        static Func<TValue, string> ConvertEnumerableToStringLambda()
-        {
-            var typeArguments = typeof(TValue).GenericTypeArguments;
-            var param_p1 = Expression.Parameter(typeof(IEnumerable<>).MakeGenericType(typeArguments));
-            var method = typeof(string).GetMethods().Where(m => m.Name == "Join" && m.IsGenericMethod && m.GetParameters()[0].ParameterType == typeof(string)).First().MakeGenericMethod(typeArguments);
-            var body = Expression.Call(method, Expression.Constant(","), param_p1);
-            return Expression.Lambda<Func<TValue, string>>(body, param_p1).Compile();
-        }
-
-        static Func<TValue, IEnumerable<string>> ConvertToEnumerableStringLambda()
-        {
-            var typeArguments = typeof(TValue).GenericTypeArguments;
-            var param_p1 = Expression.Parameter(typeof(IEnumerable<>).MakeGenericType(typeArguments));
-
-            var method = typeof(Display<>).MakeGenericType(typeof(TValue))
-                .GetMethod(nameof(Cast), BindingFlags.NonPublic | BindingFlags.Static)!
-                .MakeGenericMethod(typeArguments);
-            var body = Expression.Call(method, param_p1);
-            return Expression.Lambda<Func<TValue, IEnumerable<string>>>(body, param_p1).Compile();
-        }
+        _lookupData ??= await this.GetItemsAsync(InjectLookupService, LookupServiceKey, LookupServiceData);
+        return _lookupData;
     }
-
-    private static IEnumerable<string> Cast<TType>(IEnumerable<TType> source) => source.Select(i => i?.ToString() ?? string.Empty);
-
-    private string GetTextByValue(IEnumerable<string> source) => string.Join(",", source.Aggregate(new List<string>(), (s, i) =>
-    {
-        var text = Lookup!.FirstOrDefault(d => d.Value.Equals(i, StringComparison.OrdinalIgnoreCase))?.Text;
-        if (text != null)
-        {
-            s.Add(text);
-        }
-        return s;
-    }));
 }

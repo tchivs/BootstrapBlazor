@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Timer = BootstrapBlazor.Components.Timer;
 
@@ -20,6 +21,7 @@ public class TimerTest : BootstrapBlazorTestBase
             pb.Add(a => a.Value, TimeSpan.Zero);
         });
         Assert.DoesNotContain("circle-body", cut.Markup);
+        Context.DisposeComponents();
     }
 
     [Fact]
@@ -105,8 +107,10 @@ public class TimerTest : BootstrapBlazorTestBase
             });
         });
         var downs = cut.FindAll(".time-spinner-arrow.fa-angle-down");
-        downs[2].Click();
-        cut.Find(".time-panel-btn.confirm").Click();
+        await cut.InvokeAsync(() => downs[2].Click());
+
+        var confirm = cut.Find(".time-panel-btn.confirm");
+        await cut.InvokeAsync(() => confirm.Click());
 
         await Task.Delay(2000);
         Assert.True(timeout);

@@ -1,8 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
-
-using BootstrapBlazor.Shared;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 
@@ -11,7 +10,7 @@ public class TransferTest : BootstrapBlazorTestBase
     [Fact]
     public void Items_Ok()
     {
-        // 未设置 Itms 为空
+        // 未设置 Items 为空
         var cut = Context.RenderComponent<Transfer<string>>();
         cut.Contains("class=\"transfer\"");
 
@@ -19,6 +18,7 @@ public class TransferTest : BootstrapBlazorTestBase
         cut.SetParametersAndRender(pb =>
         {
             pb.Add(a => a.Value, "2");
+            pb.Add(a => a.OnSetItemClass, new Func<SelectedItem, string>(i => $"class-{i.Value}"));
             pb.Add(a => a.Items, new List<SelectedItem>()
             {
                 new("1", "Test1"),
@@ -26,6 +26,16 @@ public class TransferTest : BootstrapBlazorTestBase
             });
         });
         cut.Contains("transfer-panel");
+    }
+
+    [Fact]
+    public void Height_Ok()
+    {
+        var cut = Context.RenderComponent<Transfer<string>>(pb =>
+        {
+            pb.Add(a => a.Height, "200px");
+        });
+        cut.Contains("--bb-transfer-height: 200px;");
     }
 
     [Fact]
@@ -137,7 +147,7 @@ public class TransferTest : BootstrapBlazorTestBase
             pb.AddChildContent<Transfer<string>>(pb =>
             {
                 pb.Add(a => a.Value, foo.Name);
-                pb.Add(a => a.ValueChanged, EventCallback.Factory.Create<string>(Context, v => foo.Name = v));
+                pb.Add(a => a.ValueChanged, EventCallback.Factory.Create<string?>(Context, v => foo.Name = v));
                 pb.Add(a => a.ValueExpression, foo.GenerateValueExpression());
                 pb.Add(a => a.Items, new List<SelectedItem>()
                 {
@@ -168,8 +178,8 @@ public class TransferTest : BootstrapBlazorTestBase
             pb.Add(a => a.ShowSearch, true);
             pb.Add(a => a.LeftButtonText, "LeftButtonText");
             pb.Add(a => a.RightButtonText, "RightButtonText");
-            pb.Add(a => a.LeftPannelSearchPlaceHolderString, "LeftPannelSearchPlaceHolderString");
-            pb.Add(a => a.RightPannelSearchPlaceHolderString, "RightPannelSearchPlaceHolderString");
+            pb.Add(a => a.LeftPanelSearchPlaceHolderString, "LeftPanelSearchPlaceHolderString");
+            pb.Add(a => a.RightPanelSearchPlaceHolderString, "RightPanelSearchPlaceHolderString");
         });
 
         // ShowSearch
@@ -177,8 +187,8 @@ public class TransferTest : BootstrapBlazorTestBase
 
         cut.Contains("LeftButtonText");
         cut.Contains("RightButtonText");
-        cut.Contains("LeftPannelSearchPlaceHolderString");
-        cut.Contains("RightPannelSearchPlaceHolderString");
+        cut.Contains("LeftPanelSearchPlaceHolderString");
+        cut.Contains("RightPanelSearchPlaceHolderString");
     }
 
     [Fact]
@@ -188,7 +198,7 @@ public class TransferTest : BootstrapBlazorTestBase
         var cut = Context.RenderComponent<Transfer<string>>(pb =>
         {
             pb.Add(a => a.Value, foo.Name);
-            pb.Add(a => a.ValueChanged, EventCallback.Factory.Create<string>(this, v => foo.Name = v));
+            pb.Add(a => a.ValueChanged, EventCallback.Factory.Create<string?>(this, v => foo.Name = v));
             pb.Add(a => a.ValueExpression, Utility.GenerateValueExpression(foo, "Name", typeof(string)));
             pb.Add(a => a.Items, new List<SelectedItem>()
             {

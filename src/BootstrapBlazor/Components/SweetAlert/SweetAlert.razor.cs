@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -36,6 +37,8 @@ public partial class SweetAlert : IAsyncDisposable
     [NotNull]
     private Func<Task>? OnCloseAsync { get; set; }
 
+    private SweetContext _context = default!;
+
     /// <summary>
     /// <inheritdoc/>
     /// </summary>
@@ -54,6 +57,10 @@ public partial class SweetAlert : IAsyncDisposable
             if (AutoHideCheck())
             {
                 DelayToken.Cancel();
+            }
+            if (_context != null)
+            {
+                _context.ConfirmTask.TrySetResult(_context.Value);
             }
             StateHasChanged();
             return Task.CompletedTask;
@@ -81,10 +88,16 @@ public partial class SweetAlert : IAsyncDisposable
                 {
                     if (DelayToken.IsCancellationRequested)
                     {
+                        DelayToken.Dispose();
                         DelayToken = new();
                     }
                     await Task.Delay(Delay, DelayToken.Token);
                     await ModalContainer.Close();
+
+                    if (OnCloseCallbackAsync != null)
+                    {
+                        await OnCloseCallbackAsync();
+                    }
                 }
                 catch (TaskCanceledException) { }
             }
@@ -93,7 +106,9 @@ public partial class SweetAlert : IAsyncDisposable
 
     private bool AutoHideCheck() => IsAutoHide && Delay > 0;
 
-    private Task Show(SwalOption option)
+    private Func<Task>? OnCloseCallbackAsync = null;
+
+    private async Task Show(SwalOption option)
     {
         if (!IsShowDialog)
         {
@@ -104,15 +119,21 @@ public partial class SweetAlert : IAsyncDisposable
             Delay = option.Delay;
 
             option.Modal = ModalContainer;
+            if (option.IsConfirm)
+            {
+                _context = new() { ConfirmTask = new() };
+                option.ConfirmContext = _context;
+            }
             var parameters = option.ToAttributes();
             parameters.Add(nameof(ModalDialog.BodyTemplate), BootstrapDynamicComponent.CreateComponent<SweetAlertBody>(option.Parse()).Render());
 
             DialogParameter = parameters;
 
+            OnCloseCallbackAsync = AutoHideCheck() ? option.OnCloseAsync : null;
+
             // 渲染 UI 准备弹窗 Dialog
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
         }
-        return Task.CompletedTask;
     }
 
     private RenderFragment RenderDialog() => builder =>

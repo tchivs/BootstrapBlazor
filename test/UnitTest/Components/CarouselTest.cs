@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 
@@ -157,6 +158,23 @@ public class CarouselTest : BootstrapBlazorTestBase
     }
 
     [Fact]
+    public void OnSlideChanged_Ok()
+    {
+        var index = 0;
+        var cut = Context.RenderComponent<Carousel>(pb =>
+        {
+            pb.Add(b => b.Images, new List<string>() { "test1.jpg", null!, "test3.jpg", "test4.jpg" });
+            pb.Add(b => b.OnSlideChanged, i =>
+            {
+                index = i;
+                return Task.CompletedTask;
+            });
+        });
+        cut.InvokeAsync(() => cut.Instance.TriggerSlideChanged(1));
+        Assert.Equal(1, index);
+    }
+
+    [Fact]
     public void CarouselItem_Ok()
     {
         var cut = Context.RenderComponent<Carousel>(pb =>
@@ -195,5 +213,63 @@ public class CarouselTest : BootstrapBlazorTestBase
     {
         var cut = Context.RenderComponent<CarouselItem>();
         Assert.Equal("", cut.Markup);
+    }
+
+    [Fact]
+    public void Carousel_HoverPause()
+    {
+        var cut = Context.RenderComponent<Carousel>(pb =>
+        {
+            pb.Add(a => a.HoverPause, true);
+            pb.Add(b => b.ChildContent, new RenderFragment(builder =>
+            {
+                builder.OpenComponent<CarouselItem>(0);
+                builder.AddAttribute(1, nameof(CarouselItem.ChildContent), new RenderFragment(builder => builder.AddContent(0, "Test-1")));
+                builder.CloseComponent();
+
+                builder.OpenComponent<CarouselItem>(2);
+                builder.AddAttribute(3, nameof(CarouselItem.ChildContent), new RenderFragment(builder => builder.AddContent(0, "Test-2")));
+                builder.CloseComponent();
+            }));
+        });
+        cut.Contains("data-bs-pause=\"hover\"");
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.HoverPause, false);
+        });
+        cut.WaitForAssertion(() => cut.Contains("data-bs-pause=\"false\""));
+    }
+
+    [Fact]
+    public void Carousel_PlayMode()
+    {
+        var cut = Context.RenderComponent<Carousel>(pb =>
+        {
+            pb.Add(a => a.PlayMode, CarouselPlayMode.AutoPlayOnload);
+            pb.Add(b => b.ChildContent, new RenderFragment(builder =>
+            {
+                builder.OpenComponent<CarouselItem>(0);
+                builder.AddAttribute(1, nameof(CarouselItem.ChildContent), new RenderFragment(builder => builder.AddContent(0, "Test-1")));
+                builder.CloseComponent();
+
+                builder.OpenComponent<CarouselItem>(2);
+                builder.AddAttribute(3, nameof(CarouselItem.ChildContent), new RenderFragment(builder => builder.AddContent(0, "Test-2")));
+                builder.CloseComponent();
+            }));
+        });
+        cut.Contains("data-bs-ride=\"carousel\"");
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.PlayMode, CarouselPlayMode.AutoPlayAfterManually);
+        });
+        cut.WaitForAssertion(() => cut.Contains("data-bs-ride=\"true\""));
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.PlayMode, CarouselPlayMode.Manually);
+        });
+        cut.WaitForAssertion(() => cut.Contains("data-bs-ride=\"false\""));
     }
 }

@@ -1,13 +1,14 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.Extensions.Localization;
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// 
+/// 按钮上传组件
 /// </summary>
 public partial class ButtonUpload<TValue>
 {
@@ -35,6 +36,10 @@ public partial class ButtonUpload<TValue>
 
     private string? DownloadIconString => CssBuilder.Default("download-icon")
         .AddClass(DownloadIcon)
+        .Build();
+
+    private string? CancelIconString => CssBuilder.Default("cancel-icon")
+        .AddClass(CancelIcon)
         .Build();
 
     /// <summary>
@@ -91,6 +96,25 @@ public partial class ButtonUpload<TValue>
     [Parameter]
     [NotNull]
     public string? BrowserButtonText { get; set; }
+
+    /// <summary>
+    /// 获得/设置 浏览按钮颜色
+    /// </summary>
+    [Parameter]
+    [NotNull]
+    public Color BrowserButtonColor { get; set; } = Color.Primary;
+
+    /// <summary>
+    /// 获得/设置 Size 大小
+    /// </summary>
+    [Parameter]
+    public Size Size { get; set; }
+
+    /// <summary>
+    /// 获得/设置 子组件内容
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
 
     [Inject]
     [NotNull]

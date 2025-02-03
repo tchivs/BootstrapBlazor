@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.Extensions.Localization;
 
@@ -24,31 +25,28 @@ public partial class StringFilter
     private IStringLocalizer<TableFilter>? Localizer { get; set; }
 
     /// <summary>
-    /// 
+    /// <inheritdoc/>
     /// </summary>
     protected override FilterLogic Logic { get; set; } = FilterLogic.Or;
 
-    [NotNull]
-    private IEnumerable<SelectedItem>? Items { get; set; }
-
     /// <summary>
-    /// OnInitialized 方法
+    /// <inheritdoc/>
     /// </summary>
-    protected override void OnInitialized()
+    protected override void OnParametersSet()
     {
-        base.OnInitialized();
+        base.OnParametersSet();
 
-        Items = new SelectedItem[]
+        Items ??= new SelectedItem[]
         {
-            new SelectedItem("Contains", Localizer["Contains"].Value),
-            new SelectedItem("Equal", Localizer["Equal"].Value),
-            new SelectedItem("NotEqual", Localizer["NotEqual"].Value),
-            new SelectedItem("NotContains", Localizer["NotContains"].Value)
+            new("Contains", Localizer["Contains"].Value),
+            new("Equal", Localizer["Equal"].Value),
+            new("NotEqual", Localizer["NotEqual"].Value),
+            new("NotContains", Localizer["NotContains"].Value)
         };
     }
 
     /// <summary>
-    /// 
+    /// <inheritdoc/>
     /// </summary>
     public override void Reset()
     {
@@ -62,15 +60,15 @@ public partial class StringFilter
     }
 
     /// <summary>
-    /// 
+    /// <inheritdoc/>
     /// </summary>
     /// <returns></returns>
-    public override IEnumerable<FilterKeyValueAction> GetFilterConditions()
+    public override FilterKeyValueAction GetFilterConditions()
     {
-        var filters = new List<FilterKeyValueAction>();
+        var filter = new FilterKeyValueAction() { Filters = [] };
         if (!string.IsNullOrEmpty(Value1))
         {
-            filters.Add(new FilterKeyValueAction()
+            filter.Filters.Add(new FilterKeyValueAction()
             {
                 FieldKey = FieldKey,
                 FieldValue = Value1,
@@ -80,52 +78,48 @@ public partial class StringFilter
 
         if (Count > 0 && !string.IsNullOrEmpty(Value2))
         {
-            filters.Add(new FilterKeyValueAction()
+            filter.Filters.Add(new FilterKeyValueAction()
             {
                 FieldKey = FieldKey,
                 FieldValue = Value2,
                 FilterAction = Action2,
-                FilterLogic = Logic
             });
+            filter.FilterLogic = Logic;
         }
-        return filters;
+        return filter;
     }
 
     /// <summary>
-    /// Override existing filter conditions
+    /// <inheritdoc/>
     /// </summary>
-    public override async Task SetFilterConditionsAsync(IEnumerable<FilterKeyValueAction> conditions)
+    public override async Task SetFilterConditionsAsync(FilterKeyValueAction filter)
     {
-        if (conditions.Any())
+        FilterKeyValueAction first = filter.Filters?.FirstOrDefault() ?? filter;
+        if (first.FieldValue is string value)
         {
-            FilterKeyValueAction first = conditions.First();
-            if (first.FieldValue is string value)
+            Value1 = value;
+        }
+        else
+        {
+            Value1 = "";
+        }
+        Action1 = first.FilterAction;
+
+        if (filter.Filters != null && filter.Filters.Count == 2)
+        {
+            Count = 1;
+            FilterKeyValueAction second = filter.Filters[1];
+            if (second.FieldValue is string value2)
             {
-                Value1 = value;
+                Value2 = value2;
             }
             else
             {
-                Value1 = "";
+                Value2 = "";
             }
-            Action1 = first.FilterAction;
-
-            if (conditions.Count() == 2)
-            {
-                Count = 1;
-
-                FilterKeyValueAction second = conditions.ElementAt(1);
-                if (second.FieldValue is string value2)
-                {
-                    Value2 = value2;
-                }
-                else
-                {
-                    Value2 = "";
-                }
-                Action1 = second.FilterAction;
-                Logic = second.FilterLogic;
-            }
+            Action2 = second.FilterAction;
+            Logic = second.FilterLogic;
         }
-        await base.SetFilterConditionsAsync(conditions);
+        await base.SetFilterConditionsAsync(filter);
     }
 }

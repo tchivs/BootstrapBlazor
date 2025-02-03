@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Attributes;
 
@@ -11,7 +12,7 @@ public class AutoGenerateClassTest
     {
         var attr = new AutoGenerateClassAttribute()
         {
-            Editable = true,
+            Ignore = false,
             Readonly = true,
             Sortable = true,
             Filterable = true,
@@ -21,7 +22,7 @@ public class AutoGenerateClassTest
             ShowTips = true,
             Align = Alignment.Center
         };
-        Assert.True(attr.Editable);
+        Assert.False(attr.Ignore);
         Assert.True(attr.Readonly);
         Assert.True(attr.Sortable);
         Assert.True(attr.Filterable);
@@ -43,6 +44,8 @@ public class AutoGenerateClassTest
             SkipValidate = true,
             IsReadonlyWhenAdd = true,
             IsReadonlyWhenEdit = true,
+            IsVisibleWhenAdd = false,
+            IsVisibleWhenEdit = false,
             ShowLabelTooltip = true,
             DefaultSortOrder = SortOrder.Asc,
             Width = 10,
@@ -54,16 +57,23 @@ public class AutoGenerateClassTest
             PlaceHolder = "test_holder",
             Formatter = null,
             ComponentType = typeof(Select<string>),
-            Step = 1,
+            Step = "1",
             Rows = 1,
             LookupStringComparison = StringComparison.Ordinal,
             LookupServiceKey = "test-lookup",
+            LookupServiceData = true,
             GroupName = "Test",
             GroupOrder = 1,
             ShowHeaderTooltip = true,
             HeaderTextTooltip = "test header tooltip",
             HeaderTextEllipsis = true,
-            HeaderTextWrap = true
+            HeaderTextWrap = true,
+            IsMarkupString = true,
+
+            Required = true,
+            RequiredErrorMessage = "test",
+            IsRequiredWhenAdd = true,
+            IsRequiredWhenEdit = true
         };
         Assert.Equal(1, attr.Order);
         Assert.True(attr.Ignore);
@@ -71,6 +81,8 @@ public class AutoGenerateClassTest
         Assert.True(attr.SkipValidate);
         Assert.True(attr.IsReadonlyWhenAdd);
         Assert.True(attr.IsReadonlyWhenEdit);
+        Assert.False(attr.IsVisibleWhenAdd);
+        Assert.False(attr.IsVisibleWhenEdit);
         Assert.True(attr.ShowLabelTooltip);
         Assert.Equal(SortOrder.Asc, attr.DefaultSortOrder);
         Assert.Equal(10, attr.Width);
@@ -82,20 +94,23 @@ public class AutoGenerateClassTest
         Assert.Equal("test_holder", attr.PlaceHolder);
         Assert.Null(attr.Formatter);
         Assert.Equal(typeof(Select<string>), attr.ComponentType);
-        Assert.Equal(1, attr.Step);
+        Assert.Equal("1", attr.Step);
         Assert.Equal(1, attr.Rows);
         Assert.Equal(StringComparison.Ordinal, attr.LookupStringComparison);
         Assert.Equal("Test", attr.GroupName);
         Assert.Equal(1, attr.GroupOrder);
         Assert.Equal("test-lookup", attr.LookupServiceKey);
+        Assert.Equal(true, attr.LookupServiceData);
         Assert.True(attr.ShowHeaderTooltip);
         Assert.True(attr.HeaderTextWrap);
         Assert.True(attr.HeaderTextEllipsis);
         Assert.Equal("test header tooltip", attr.HeaderTextTooltip);
+        Assert.True(attr.IsMarkupString);
 
         var attrInterface = (ITableColumn)attr;
         attrInterface.ShowLabelTooltip = true;
         Assert.True(attrInterface.ShowLabelTooltip);
+
         attrInterface.ShowLabelTooltip = null;
         Assert.False(attrInterface.ShowLabelTooltip);
 
@@ -121,13 +136,70 @@ public class AutoGenerateClassTest
         Assert.Equal(0, attr.Width);
 
         attrInterface.Width = -10;
-        Assert.Equal(0, attr.Width);
+        Assert.Equal(-10, attr.Width);
 
         attr.Width = -10;
         Assert.Null(attrInterface.Width);
 
         attr.Width = 10;
         Assert.Equal(10, attrInterface.Width);
+
+        attrInterface.IsVisibleWhenAdd = false;
+        Assert.False(attrInterface.IsVisibleWhenAdd);
+
+        attrInterface.IsVisibleWhenEdit = false;
+        Assert.False(attrInterface.IsVisibleWhenEdit);
+
+        attrInterface.IsReadonlyWhenAdd = true;
+        Assert.True(attrInterface.IsReadonlyWhenAdd);
+
+        attrInterface.IsReadonlyWhenEdit = true;
+        Assert.True(attrInterface.IsReadonlyWhenEdit);
+
+        attrInterface.GetTooltipTextCallback = _ => Task.FromResult((string?)"Test");
+        Assert.NotNull(attrInterface.GetTooltipTextCallback);
+
+        attrInterface.CustomSearch = (_, _) => new SearchFilterAction("test", "test");
+        Assert.NotNull(attrInterface.CustomSearch);
+
+        attrInterface.Searchable = null;
+        Assert.False(attrInterface.Searchable);
+
+        attrInterface.Filterable = null;
+        Assert.False(attrInterface.Filterable);
+
+        attrInterface.Searchable = null;
+        Assert.False(attrInterface.Searchable);
+
+        attrInterface.Sortable = null;
+        Assert.False(attrInterface.Sortable);
+
+        attrInterface.TextWrap = null;
+        Assert.False(attrInterface.TextWrap);
+
+        attrInterface.TextEllipsis = null;
+        Assert.False(attrInterface.TextEllipsis);
+
+        attrInterface.Ignore = null;
+        Assert.False(attrInterface.Ignore);
+
+        attrInterface.Readonly = null;
+        Assert.False(attrInterface.Readonly);
+
+        attrInterface.ShowTips = null;
+        Assert.False(attrInterface.ShowTips);
+
+        attrInterface.ShowCopyColumn = null;
+        Assert.False(attrInterface.ShowCopyColumn);
+
+        attrInterface.Visible = null;
+        Assert.True(attrInterface.Visible);
+
+        attrInterface.Align = null;
+        Assert.Equal(Alignment.None, attrInterface.Align);
+
+        attrInterface.ToolboxTemplate = col => builder => builder.AddContent(0, "test");
+        Assert.NotNull(attrInterface.ToolboxTemplate);
 
         var attrEditor = (IEditorItem)attr;
         attrEditor.Items = null;
@@ -151,8 +223,21 @@ public class AutoGenerateClassTest
         attrEditor.IsPopover = true;
         Assert.True(attrEditor.IsPopover);
 
+        attrEditor.LookupService = new LookupService();
+        Assert.NotNull(attrEditor.LookupService);
+
         // 增加 GetDisplay 单元覆盖率
         attr.Text = null;
         Assert.Equal(string.Empty, attr.GetDisplayName());
+
+        Assert.True(attr.Required);
+        Assert.True(attr.IsRequiredWhenEdit);
+        Assert.True(attr.IsRequiredWhenAdd);
+        Assert.Equal("test", attr.RequiredErrorMessage);
+    }
+
+    class LookupService : LookupServiceBase
+    {
+        public override IEnumerable<SelectedItem>? GetItemsByKey(string? key, object? data) => null;
     }
 }

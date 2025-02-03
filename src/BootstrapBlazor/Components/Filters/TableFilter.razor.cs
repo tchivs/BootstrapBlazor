@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.Extensions.Localization;
 
@@ -58,8 +59,7 @@ public partial class TableFilter : IFilter
     /// <summary>
     /// 获得/设置 Header 显示文字
     /// </summary>
-    [NotNull]
-    private string? Title { get; set; }
+    private string? _title;
 
     /// <summary>
     /// 获得/设置 相关 Field 字段名称
@@ -70,7 +70,7 @@ public partial class TableFilter : IFilter
     /// <summary>
     /// 获得/设置 条件数量
     /// </summary>
-    private int Count { get; set; }
+    private int _count;
 
     /// <summary>
     /// 获得/设置 是否显示增加减少条件按钮
@@ -93,9 +93,7 @@ public partial class TableFilter : IFilter
     /// </summary>
     [Parameter]
     [NotNull]
-#if NET6_0_OR_GREATER
     [EditorRequired]
-#endif
     public ITableColumn? Column { get; set; }
 
     /// <summary>
@@ -119,7 +117,7 @@ public partial class TableFilter : IFilter
     public string? FilterButtonText { get; set; }
 
     /// <summary>
-    /// 获得/设置 Table Header 实例
+    /// 获得/设置 ITable 实例
     /// </summary>
     [Parameter]
     public ITable? Table { get; set; }
@@ -132,7 +130,10 @@ public partial class TableFilter : IFilter
     [NotNull]
     private IIconTheme? IconTheme { get; set; }
 
-    private string? Step => Column.Step?.ToString() ?? "0.01";
+    /// <summary>
+    /// 组件步长
+    /// </summary>
+    private string? _step;
 
     /// <summary>
     /// <inheritdoc/>
@@ -141,9 +142,10 @@ public partial class TableFilter : IFilter
     {
         base.OnInitialized();
 
-        Title = Column.GetDisplayName();
+        _title = Column.GetDisplayName();
         FieldKey = Column.GetFieldName();
         Column.Filter = this;
+        _step = Column.Step;
     }
 
     /// <summary>
@@ -159,6 +161,15 @@ public partial class TableFilter : IFilter
 
         PlusIcon ??= IconTheme.GetIconByKey(ComponentIcons.TableFilterPlusIcon);
         MinusIcon ??= IconTheme.GetIconByKey(ComponentIcons.TableFilterMinusIcon);
+
+        if (Table != null && Table.Filters.TryGetValue(Column.GetFieldName(), out var action))
+        {
+            var filter = action.GetFilterConditions();
+            if (filter.Filters?.Count > 1)
+            {
+                _count = 1;
+            }
+        }
     }
 
     /// <summary>
@@ -179,13 +190,16 @@ public partial class TableFilter : IFilter
     /// <returns></returns>
     private async Task OnClickReset()
     {
-        Count = 0;
+        _count = 0;
 
         if (Table != null)
         {
             Table.Filters.Remove(FieldKey);
             FilterAction.Reset();
-            await Table.OnFilterAsync();
+            if (Table.OnFilterAsync != null)
+            {
+                await Table.OnFilterAsync();
+            }
         }
     }
 
@@ -203,7 +217,8 @@ public partial class TableFilter : IFilter
     {
         if (Table != null)
         {
-            if (FilterAction.GetFilterConditions().Any())
+            var f = FilterAction.GetFilterConditions();
+            if (f.Filters != null && f.Filters.Count > 0)
             {
                 Table.Filters[FieldKey] = FilterAction;
             }
@@ -211,7 +226,10 @@ public partial class TableFilter : IFilter
             {
                 Table.Filters.Remove(FieldKey);
             }
-            await Table.OnFilterAsync();
+            if (Table.OnFilterAsync != null)
+            {
+                await Table.OnFilterAsync();
+            }
         }
     }
 
@@ -221,9 +239,9 @@ public partial class TableFilter : IFilter
     /// <returns></returns>
     private void OnClickPlus()
     {
-        if (Count == 0)
+        if (_count == 0)
         {
-            Count++;
+            _count++;
         }
     }
 
@@ -233,9 +251,9 @@ public partial class TableFilter : IFilter
     /// <returns></returns>
     private void OnClickMinus()
     {
-        if (Count == 1)
+        if (_count == 1)
         {
-            Count--;
+            _count--;
         }
     }
 }

@@ -42,9 +42,8 @@ export default {
 
         viewer.resetImage = () => {
             viewer.prevImg.classList.add('transition-none')
-            viewer.prevImg.style.transform = 'scale(1) rotate(0deg)'
-            viewer.prevImg.style.marginLeft = '0px'
-            viewer.prevImg.style.marginTop = '0px'
+            viewer.prevImg.style.setProperty('transform', 'scale(1) rotate(0deg)');
+            viewer.prevImg.style.setProperty('margin', '0');
             const handler = window.setTimeout(() => {
                 window.clearTimeout(handler)
                 viewer.prevImg.classList.remove('transition-none')
@@ -295,7 +294,9 @@ export default {
                     const newValY = viewer.pt.top + Math.ceil(eventY - viewer.originY)
 
                     viewer.prevImg.style.marginLeft = `${newValX}px`
+                    viewer.prevImg.style.marginRight = `${-newValX}px`
                     viewer.prevImg.style.marginTop = `${newValY}px`
+                    viewer.prevImg.style.marginBottom = `${-newValY}px`
                 }
 
             },

@@ -1,13 +1,14 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
 /// 类型过滤器基类
 /// /// </summary>
-public abstract class FilterBase : ComponentBase, IFilterAction
+public abstract class FilterBase : BootstrapModuleComponentBase, IFilterAction
 {
     /// <summary>
     /// 
@@ -43,6 +44,12 @@ public abstract class FilterBase : ComponentBase, IFilterAction
     public int Count { get; set; }
 
     /// <summary>
+    /// 获得/设置 条件候选项 请尽量使用静态数据 避免组件性能损失
+    /// </summary>
+    [Parameter]
+    public IEnumerable<SelectedItem>? Items { get; set; }
+
+    /// <summary>
     /// 获得/设置 所属 TableFilter 实例
     /// </summary>
     [CascadingParameter]
@@ -71,16 +78,16 @@ public abstract class FilterBase : ComponentBase, IFilterAction
     /// 获得过滤窗口的所有条件方法
     /// </summary>
     /// <returns></returns>
-    public abstract IEnumerable<FilterKeyValueAction> GetFilterConditions();
+    public abstract FilterKeyValueAction GetFilterConditions();
 
     /// <summary>
     /// 设置过滤集合方法
     /// </summary>
-    /// <param name="conditions"></param>
-    public virtual Task SetFilterConditionsAsync(IEnumerable<FilterKeyValueAction> conditions) => OnFilterValueChanged();
+    /// <param name="filter"></param>
+    public virtual Task SetFilterConditionsAsync(FilterKeyValueAction filter) => OnFilterValueChanged();
 
     /// <summary>
-    /// 
+    /// 过滤按钮回调方法
     /// </summary>
     /// <returns></returns>
     protected async Task OnFilterValueChanged()
@@ -93,7 +100,7 @@ public abstract class FilterBase : ComponentBase, IFilterAction
     }
 
     /// <summary>
-    /// 
+    /// 重置按钮回调方法
     /// </summary>
     /// <returns></returns>
     protected async Task OnClearFilter()

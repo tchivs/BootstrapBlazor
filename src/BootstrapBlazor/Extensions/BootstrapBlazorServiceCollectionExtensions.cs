@@ -1,8 +1,9 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using BootstrapBlazor.Localization.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Globalization;
 
@@ -25,21 +26,56 @@ public static class BootstrapBlazorServiceCollectionExtensions
         services.AddMemoryCache();
         services.AddHttpClient();
 
-        services.AddAuthorizationCore();
         services.AddJsonLocalization(localizationConfigure);
+
+        services.AddConfiguration();
         services.TryAddSingleton<ICacheManager, CacheManager>();
-
         services.TryAddSingleton<IComponentIdGenerator, DefaultIdGenerator>();
+        services.TryAddSingleton<ILookupService, NullLookupService>();
+        services.TryAddSingleton<IVersionService, DefaultJSVersionService>();
+        services.TryAddSingleton<IZipArchiveService, DefaultZipArchiveService>();
         services.TryAddSingleton(typeof(IDispatchService<>), typeof(DefaultDispatchService<>));
-        services.TryAddSingleton(typeof(ILookupService), typeof(NullLookupService));
 
-        services.TryAddTransient<ITableExcelExport, DefaultExcelExport>();
+        // Html2Pdf 服务
+        services.TryAddSingleton<IHtml2Pdf, DefaultHtml2PdfService>();
+
+        // Table 导出服务
+        services.TryAddScoped<ITableExport, DefaultTableExport>();
+
+        // 主题服务
+        services.TryAddScoped<IThemeProvider, DefaultThemeProvider>();
+
+        // IP 地理位置定位服务
+        services.TryAddSingleton<IIpLocatorFactory, DefaultIpLocatorFactory>();
+        services.AddSingleton<IIpLocatorProvider, JuHeIpLocatorProvider>();
+        services.AddSingleton<IIpLocatorProvider, BaiduIpLocatorProvider>();
+        services.AddSingleton<IIpLocatorProvider, BaiduIpLocatorProviderV2>();
+
+        // 节日服务
+        services.TryAddSingleton<ICalendarFestivals, DefaultCalendarFestivals>();
+
+        // 假日服务
+        services.TryAddSingleton<ICalendarHolidays, DefaultCalendarHolidays>();
+
+        // 在线连接服务
+        services.TryAddSingleton<IConnectionService, DefaultConnectionService>();
+
+        // 限流器服务
+        services.TryAddSingleton<IThrottleDispatcherFactory, DefaultThrottleDispatcherFactory>();
+
         services.TryAddScoped(typeof(IDataService<>), typeof(NullDataService<>));
+        services.TryAddScoped<IReconnectorProvider, ReconnectorProvider>();
+        services.TryAddScoped<IGeoLocationService, DefaultGeoLocationService>();
+        services.TryAddScoped<IComponentHtmlRenderer, ComponentHtmlRenderer>();
+        services.TryAddScoped<IBrowserFingerService, DefaultBrowserFingerService>();
+        services.TryAddScoped<ISerialService, DefaultSerialService>();
+        services.TryAddScoped<IBluetooth, DefaultBluetooth>();
         services.AddScoped<TabItemTextOptions>();
-
         services.AddScoped<DialogService>();
+        services.AddScoped<MaskService>();
         services.AddScoped<MessageService>();
         services.AddScoped<ToastService>();
+        services.AddScoped<DrawerService>();
         services.AddScoped<SwalService>();
         services.AddScoped<FullScreenService>();
         services.AddScoped<PrintService>();
@@ -49,17 +85,11 @@ public static class BootstrapBlazorServiceCollectionExtensions
         services.AddScoped<AjaxService>();
         services.AddScoped(typeof(DragDropService<>));
         services.AddScoped<ClipboardService>();
-        services.AddScoped<ResizeNotificationService>();
         services.AddScoped<NotificationService>();
         services.AddScoped<EyeDropperService>();
-        services.AddTransient<IJSRuntimeEventHandler, JSRuntimeEventHandler>();
-        services.AddScoped<IGeoLocationService, DefaultGeoLocationService>();
-
-        services.TryAddScoped<IIPLocatorProvider, DefaultIPLocatorProvider>();
-        services.TryAddScoped<IReconnectorProvider, ReconnectorProvider>();
+        services.AddScoped<WebSpeechService>();
 
         services.ConfigureBootstrapBlazorOption(configureOptions);
-        services.ConfigureIPLocatorOption();
 
         services.AddTabItemBindOptions();
         services.AddIconTheme();
@@ -77,6 +107,8 @@ public static class BootstrapBlazorServiceCollectionExtensions
         services.AddOptionsMonitor<BootstrapBlazorOptions>();
         services.Configure<BootstrapBlazorOptions>(op =>
         {
+            configureOptions?.Invoke(op);
+
             // 设置默认文化信息
             if (op.DefaultCultureInfo != null)
             {
@@ -87,8 +119,6 @@ public static class BootstrapBlazorServiceCollectionExtensions
 
             // 设置 FallbackCulture
             SetFallbackCulture();
-
-            configureOptions?.Invoke(op);
 
             [ExcludeFromCodeCoverage]
             void SetFallbackCulture()
@@ -110,6 +140,8 @@ public static class BootstrapBlazorServiceCollectionExtensions
     /// <param name="services"></param>
     /// <param name="locatorAction"></param>
     /// <returns></returns>
+    [Obsolete("已弃用 请删除即可")]
+    [ExcludeFromCodeCoverage]
     public static IServiceCollection ConfigureIPLocatorOption(this IServiceCollection services, Action<IPLocatorOption>? locatorAction = null)
     {
         services.AddOptionsMonitor<IPLocatorOption>();
@@ -125,7 +157,6 @@ public static class BootstrapBlazorServiceCollectionExtensions
     /// </summary>
     /// <param name="services"></param>
     /// <param name="localizationConfigure"></param>
-    /// <returns></returns>
     public static IServiceCollection ConfigureJsonLocalizationOptions(this IServiceCollection services, Action<JsonLocalizationOptions> localizationConfigure)
     {
         services.Configure(localizationConfigure);
@@ -137,7 +168,6 @@ public static class BootstrapBlazorServiceCollectionExtensions
     /// </summary>
     /// <typeparam name="TOptions"></typeparam>
     /// <param name="services"></param>
-    /// <returns></returns>
     public static IServiceCollection AddOptionsMonitor<TOptions>(this IServiceCollection services) where TOptions : class
     {
         services.AddOptions();
@@ -187,9 +217,12 @@ public static class BootstrapBlazorServiceCollectionExtensions
     /// <param name="services"></param>
     /// <param name="configureOptions"></param>
     /// <returns></returns>
-    public static IServiceCollection ConfigureIconThemeOptions(this IServiceCollection services, Action<IconThemeOptions> configureOptions)
+    public static IServiceCollection ConfigureIconThemeOptions(this IServiceCollection services, Action<IconThemeOptions>? configureOptions = null)
     {
-        services.Configure(configureOptions);
+        if (configureOptions != null)
+        {
+            services.Configure(configureOptions);
+        }
         return services;
     }
 }

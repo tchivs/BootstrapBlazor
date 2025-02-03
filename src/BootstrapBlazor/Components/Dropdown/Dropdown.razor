@@ -1,20 +1,30 @@
 ﻿@namespace BootstrapBlazor.Components
 @typeparam TValue
-@inherits ValidateBase<TValue>
+@inherits PopoverSelectBase<TValue>
+@attribute [BootstrapModuleAutoLoader("Dropdown/Dropdown.razor.js", JSObjectReference = true)]
 
 @if (IsShowLabel)
 {
     <BootstrapLabel for="@Id" ShowLabelTooltip="ShowLabelTooltip" Value="@DisplayText" />
 }
 <div @attributes="@AdditionalAttributes" id="@Id" class="@DirectionClassName">
-    <button type="button" class="@ButtonClassName" data-bs-toggle="@DropdownToggle" disabled="@Disabled">@ButtonText</button>
+    <button type="button" class="@ButtonClassName" data-bs-toggle="@DropdownToggle" disabled="@Disabled">
+        @if (ButtonTemplate == null)
+        {
+            @ButtonText
+        }
+        else
+        {
+            @ButtonTemplate(SelectedItem)
+        }
+    </button>
     @if (ShowSplit)
     {
-        <button type="button" class="@ClassName" data-bs-toggle="dropdown" disabled="@Disabled" aria-haspopup="true" aria-expanded="false"></button>
+        <button type="button" class="@ClassName" data-bs-toggle="@ToggleString" disabled="@Disabled" aria-haspopup="true" aria-expanded="false"></button>
     }
-    @if (!IsDisabled)
-    {
-        <div class="@MenuAlignmentClass">
+    <div class="@MenuAlignmentClass">
+        @if (ItemsTemplate == null)
+        {
             @foreach (var item in GetItems())
             {
                 if (ItemTemplate != null)
@@ -23,13 +33,17 @@
                 }
                 else if (item.IsDisabled)
                 {
-                    <div class="@ActiveItem(item)">@item.Text</div>
+                    <div class="@DisableItem(item)">@item.Text</div>
                 }
                 else
                 {
                     <div class="@ActiveItem(item)" @onclick="e => OnItemClick(item)">@item.Text</div>
                 }
             }
-        </div>
-    }
+        }
+        else
+        {
+            @ItemsTemplate
+        }
+    </div>
 </div>

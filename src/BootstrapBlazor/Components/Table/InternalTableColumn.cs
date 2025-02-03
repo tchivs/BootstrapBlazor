@@ -1,32 +1,37 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
-internal class InternalTableColumn : ITableColumn
+/// <summary>
+/// 构造函数
+/// </summary>
+/// <param name="fieldName">字段名称</param>
+/// <param name="fieldType">字段类型</param>
+/// <param name="fieldText">显示文字</param>
+class InternalTableColumn(string fieldName, Type fieldType, string? fieldText = null) : ITableColumn
 {
-    private string FieldName { get; }
+    private string FieldName { get; } = fieldName;
 
-    public bool Sortable { get; set; }
+    public bool? Sortable { get; set; }
 
     public bool DefaultSort { get; set; }
 
     public SortOrder DefaultSortOrder { get; set; }
 
-    public bool Filterable { get; set; }
+    public bool? Filterable { get; set; }
 
-    public bool Searchable { get; set; }
+    public bool? Searchable { get; set; }
 
     public int? Width { get; set; }
 
     public bool Fixed { get; set; }
 
-    public bool Visible { get; set; } = true;
+    public bool? TextWrap { get; set; }
 
-    public bool TextWrap { get; set; }
-
-    public bool TextEllipsis { get; set; }
+    public bool? TextEllipsis { get; set; }
 
     /// <summary>
     /// 获得/设置 是否不进行验证 默认为 false
@@ -34,14 +39,59 @@ internal class InternalTableColumn : ITableColumn
     public bool SkipValidate { get; set; }
 
     /// <summary>
-    /// 获得/设置 新建时此列只读 默认为 false
+    /// <inheritdoc/>
     /// </summary>
-    public bool IsReadonlyWhenAdd { get; set; }
+    public bool? Ignore { get; set; }
 
     /// <summary>
-    /// 获得/设置 编辑时此列只读 默认为 false
+    /// <inheritdoc/>
     /// </summary>
-    public bool IsReadonlyWhenEdit { get; set; }
+    public bool? Readonly { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public bool? IsReadonlyWhenAdd { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public bool? IsReadonlyWhenEdit { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public bool? Visible { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public bool? IsVisibleWhenAdd { get; set; } = true;
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public bool? IsVisibleWhenEdit { get; set; } = true;
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public bool? Required { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public bool? IsRequiredWhenAdd { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public bool? IsRequiredWhenEdit { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public string? RequiredErrorMessage { get; set; }
 
     /// <summary>
     /// 获得/设置 是否显示标签 Tooltip 多用于标签文字过长导致裁减时使用 默认 null
@@ -63,6 +113,11 @@ internal class InternalTableColumn : ITableColumn
     /// </summary>
     public RenderFragment<ITableColumn>? HeaderTemplate { get; set; }
 
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public RenderFragment<ITableColumn>? ToolboxTemplate { get; set; }
+
     public IFilter? Filter { get; set; }
 
     public string? FormatString { get; set; }
@@ -72,24 +127,25 @@ internal class InternalTableColumn : ITableColumn
     /// </summary>
     public string? PlaceHolder { get; set; }
 
-    public Func<object?, Task<string>>? Formatter { get; set; }
+    public Func<object?, Task<string?>>? Formatter { get; set; }
 
-    public Alignment Align { get; set; }
+    public Alignment? Align { get; set; }
 
-    public bool ShowTips { get; set; }
+    public bool? ShowTips { get; set; }
 
-    public Type PropertyType { get; }
+    public Func<object?, Task<string?>>? GetTooltipTextCallback { get; set; }
 
+    public Type PropertyType { get; } = fieldType;
+
+    [ExcludeFromCodeCoverage]
     public bool Editable { get; set; } = true;
 
-    public bool Readonly { get; set; }
-
-    public object? Step { get; set; }
+    public string? Step { get; set; }
 
     public int Rows { get; set; }
 
     [NotNull]
-    public string? Text { get; set; }
+    public string? Text { get; set; } = fieldText;
 
     public RenderFragment<object>? EditTemplate { get; set; }
 
@@ -129,14 +185,24 @@ internal class InternalTableColumn : ITableColumn
     public bool IsPopover { get; set; }
 
     /// <summary>
-    /// 获得/设置 字典数据源字符串比较规则 默认 StringComparison.OrdinalIgnoreCase 大小写不敏感 
+    /// <inheritdoc/>>
     /// </summary>
     public StringComparison LookupStringComparison { get; set; } = StringComparison.OrdinalIgnoreCase;
 
     /// <summary>
-    /// 获得/设置 LookupService 服务获取 Lookup 数据集合键值 常用于外键自动转换为名称操作
+    /// <inheritdoc/>>
     /// </summary>
     public string? LookupServiceKey { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>>
+    /// </summary>
+    public object? LookupServiceData { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public ILookupService? LookupService { get; set; }
 
     /// <summary>
     /// 获得/设置 单元格回调方法
@@ -161,7 +227,7 @@ internal class InternalTableColumn : ITableColumn
     /// <summary>
     /// <inheritdoc/>
     /// </summary>
-    public bool ShowCopyColumn { get; set; }
+    public bool? ShowCopyColumn { get; set; }
 
     /// <summary>
     /// <inheritdoc/>
@@ -184,19 +250,16 @@ internal class InternalTableColumn : ITableColumn
     public bool HeaderTextEllipsis { get; set; }
 
     /// <summary>
-    /// 构造函数
+    /// <inheritdoc/>
     /// </summary>
-    /// <param name="fieldName">字段名称</param>
-    /// <param name="fieldType">字段类型</param>
-    /// <param name="fieldText">显示文字</param>
-    public InternalTableColumn(string fieldName, Type fieldType, string? fieldText = null)
-    {
-        FieldName = fieldName;
-        PropertyType = fieldType;
-        Text = fieldText;
-    }
+    public bool IsMarkupString { get; set; }
 
     public string GetDisplayName() => Text;
 
     public string GetFieldName() => FieldName;
+
+    /// <summary>
+    /// 自定义实现搜索方法
+    /// </summary>
+    public Func<ITableColumn, string?, SearchFilterAction>? CustomSearch { get; set; }
 }

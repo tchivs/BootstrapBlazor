@@ -1,65 +1,49 @@
-﻿import { isElement } from "./utility.js";
-import Data from './data.js'
+﻿import { isElement } from "./utility.js"
 
-export function init(id) {
-    const fs = {}
-    Data.set(id, fs)
-
-    fs.toggle = () => {
-        if (isFullscreen()) {
-            exit()
-        }
-        else {
-            fs.enter()
-        }
-        fs.toggleElement.classList.toggle('fs-open')
+export async function toggle(options) {
+    let el = null;
+    if (options?.id) {
+        el = document.getElementById(options.id);
     }
-
-    fs.enter = () => {
-        fs.toggleElement.requestFullscreen() ||
-            fs.toggleElement.webkitRequestFullscreen ||
-            fs.toggleElement.mozRequestFullScreen ||
-            fs.toggleElement.msRequestFullscreen
-    }
-}
-
-export function execute(id, el) {
-    const fs = Data.get(id)
-    if (el && typeof (el) === 'string' && el.length > 0) {
-        fs.toggleElement = document.getElementById(el)
-    }
-    else if (el && isElement(el)) {
-        fs.toggleElement = el
+    else if (options?.element && isElement(options.element)) {
+        el = options.element;
     }
     else {
-        fs.toggleElement = document.documentElement
+        el = document.documentElement
     }
-    fs.toggle()
+
+    if (el !== null) {
+        if (isFullscreen()) {
+            await exitFullscreen(el);
+        }
+        else {
+            await enterFullscreen(el);
+        }
+    }
 }
 
-export function dispose(id) {
-    Data.remove(id)
+const enterFullscreen = async el => {
+    await el.requestFullscreen();
+
+    updateFullscreenState(el);
+}
+
+const exitFullscreen = async el => {
+    await document.exitFullscreen()
+
+    updateFullscreenState(el);
+}
+
+const updateFullscreenState = el => {
+    if (isFullscreen()) {
+        el.classList.add('bb-fs-open')
+    }
+    else {
+        el.classList.remove('bb-fs-open');
+        document.documentElement.classList.remove('bb-fs-open');
+    }
 }
 
 const isFullscreen = () => {
-    return document.fullscreen ||
-        document.webkitIsFullScreen ||
-        document.webkitFullScreen ||
-        document.mozFullScreen ||
-        document.msFullScreent
-}
-
-const exit = () => {
-    if (document.exitFullscreen) {
-        document.exitFullscreen()
-    }
-    else if (document.mozCancelFullScreen) {
-        document.mozCancelFullScreen()
-    }
-    else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen()
-    }
-    else if (document.msExitFullscreen) {
-        document.msExitFullscreen()
-    }
+    return document.fullscreenElement !== null;
 }

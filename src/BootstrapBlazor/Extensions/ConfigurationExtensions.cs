@@ -1,7 +1,10 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Collections.Specialized;
 using System.Runtime.InteropServices;
 
@@ -12,6 +15,17 @@ namespace Microsoft.Extensions.Configuration;
 /// </summary>
 internal static class ConfigurationExtensions
 {
+    [ExcludeFromCodeCoverage]
+    public static IServiceCollection AddConfiguration(this IServiceCollection services)
+    {
+        services.TryAddSingleton<IConfiguration>(_ =>
+        {
+            var builder = new ConfigurationBuilder();
+            return builder.Build();
+        });
+        return services;
+    }
+
     public static NameValueCollection GetEnvironmentInformation(this IConfiguration configuration)
     {
         var nv = new NameValueCollection
@@ -92,14 +106,14 @@ internal static class ConfigurationExtensions
     /// <param name="config"></param>
     /// <param name="defaultValue"></param>
     /// <returns></returns>
-    public static string GetUserName(this IConfiguration config, string defaultValue = "")
+    public static string? GetUserName(this IConfiguration config, string? defaultValue = null)
     {
-        var userName = config.GetValue<string>("USERNAME");
+        var userName = config.GetValue<string?>("USERNAME");
 
-        // Mac CentOs 系统
+        // Mac CentOS 系统
         if (string.IsNullOrEmpty(userName))
         {
-            userName = config.GetValue<string>("LOGNAME");
+            userName = config.GetValue<string?>("LOGNAME");
         }
         return userName ?? defaultValue;
     }
@@ -110,9 +124,9 @@ internal static class ConfigurationExtensions
     /// <param name="config"></param>
     /// <param name="defaultValue"></param>
     /// <returns></returns>
-    public static string GetEnvironmentName(this IConfiguration config, string defaultValue = "")
+    public static string? GetEnvironmentName(this IConfiguration config, string? defaultValue = null)
     {
-        return config.GetValue<string>("ASPNETCORE_ENVIRONMENT") ?? defaultValue;
+        return config.GetValue<string?>("ASPNETCORE_ENVIRONMENT") ?? defaultValue;
     }
 
     /// <summary>
@@ -121,9 +135,9 @@ internal static class ConfigurationExtensions
     /// <param name="config"></param>
     /// <param name="defaultValue"></param>
     /// <returns></returns>
-    public static string GetIISPath(this IConfiguration config, string defaultValue = "")
+    public static string? GetIISPath(this IConfiguration config, string? defaultValue = null)
     {
-        return config.GetValue<string>("ASPNETCORE_IIS_PHYSICAL_PATH") ?? defaultValue;
+        return config.GetValue<string?>("ASPNETCORE_IIS_PHYSICAL_PATH") ?? defaultValue;
     }
 
     /// <summary>
@@ -132,10 +146,10 @@ internal static class ConfigurationExtensions
     /// <param name="config"></param>
     /// <param name="defaultValue"></param>
     /// <returns></returns>
-    public static string GetVisualStudioVersion(this IConfiguration config, string defaultValue = "")
+    public static string? GetVisualStudioVersion(this IConfiguration config, string? defaultValue = null)
     {
-        var edition = config.GetValue<string>("VisualStudioEdition");
-        var version = config.GetValue<string>("VisualStudioVersion");
+        var edition = config.GetValue<string?>("VisualStudioEdition");
+        var version = config.GetValue<string?>("VisualStudioVersion");
 
         var ret = $"{edition} {version}";
         if (ret == " ")

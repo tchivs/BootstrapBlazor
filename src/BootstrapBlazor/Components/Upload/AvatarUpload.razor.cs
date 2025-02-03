@@ -1,13 +1,14 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.AspNetCore.Components.Forms;
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// 
+/// 头像上传组件
 /// </summary>
 public partial class AvatarUpload<TValue>
 {
@@ -42,11 +43,11 @@ public partial class AvatarUpload<TValue>
         .AddClass($"height: {Width}px;", IsCircle)
         .Build();
 
-    private string? ValidStatusIconString => CssBuilder.Default("valid-icon")
+    private string? ValidStatusIconString => CssBuilder.Default("valid-icon valid")
         .AddClass(ValidStatusIcon)
         .Build();
 
-    private string? InvalidStatusIconString => CssBuilder.Default("valid-icon")
+    private string? InvalidStatusIconString => CssBuilder.Default("valid-icon invalid")
         .AddClass(InvalidStatusIcon)
         .Build();
 
@@ -98,6 +99,12 @@ public partial class AvatarUpload<TValue>
     [Parameter]
     public string? InvalidStatusIcon { get; set; }
 
+    /// <summary>
+    /// 获得/设置 继续上传按钮是否在列表前 默认 false
+    /// </summary>
+    [Parameter]
+    public bool IsUploadButtonAtFirst { get; set; }
+
     [Inject]
     [NotNull]
     private IIconTheme? IconTheme { get; set; }
@@ -109,7 +116,7 @@ public partial class AvatarUpload<TValue>
     {
         base.OnParametersSet();
 
-        DeleteIcon ??= IconTheme.GetIconByKey(ComponentIcons.AvatarUploadDelteIcon);
+        DeleteIcon ??= IconTheme.GetIconByKey(ComponentIcons.AvatarUploadDeleteIcon);
         LoadingIcon ??= IconTheme.GetIconByKey(ComponentIcons.AvatarUploadLoadingIcon);
         AddIcon ??= IconTheme.GetIconByKey(ComponentIcons.AvatarUploadAddIcon);
         ValidStatusIcon ??= IconTheme.GetIconByKey(ComponentIcons.AvatarUploadValidStatusIcon);

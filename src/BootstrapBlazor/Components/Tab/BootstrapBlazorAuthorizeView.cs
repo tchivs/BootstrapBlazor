@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -11,7 +12,7 @@ using System.Collections.ObjectModel;
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// 
+/// BootstrapBlazorAuthorizeView 组件
 /// </summary>
 public class BootstrapBlazorAuthorizeView : ComponentBase
 {
@@ -44,31 +45,25 @@ public class BootstrapBlazorAuthorizeView : ComponentBase
     private Task<AuthenticationState>? AuthenticationState { get; set; }
 
     [Inject]
-    private IAuthorizationPolicyProvider? AuthorizationPolicyProvider { get; set; }
-
-    [Inject]
-    private IAuthorizationService? AuthorizationService { get; set; }
-
-#if NET6_0_OR_GREATER
-    [Inject]
     [NotNull]
     private NavigationManager? NavigationManager { get; set; }
-#endif
+
+    [Inject, NotNull]
+    private IServiceProvider? ServiceProvider { get; set; }
 
     private bool Authorized { get; set; }
 
     /// <summary>
-    /// OnInitializedAsync 方法
+    /// <inheritdoc/>
     /// </summary>
     /// <returns></returns>
     protected override async Task OnInitializedAsync()
     {
-        Authorized = Type == null
-            || await Type.IsAuthorizedAsync(AuthenticationState, AuthorizationPolicyProvider, AuthorizationService, Resource);
+        Authorized = Type == null || await Type.IsAuthorizedAsync(ServiceProvider, AuthenticationState, Resource);
     }
 
     /// <summary>
-    /// BuildRenderTree 方法
+    /// <inheritdoc/>
     /// </summary>
     /// <param name="builder"></param>
     protected override void BuildRenderTree(RenderTreeBuilder builder)
@@ -82,9 +77,7 @@ public class BootstrapBlazorAuthorizeView : ComponentBase
             {
                 builder.AddAttribute(index++, kv.Key, kv.Value);
             }
-#if NET6_0_OR_GREATER
             BuildQueryParameters();
-#endif
             builder.CloseComponent();
         }
         else
@@ -92,7 +85,6 @@ public class BootstrapBlazorAuthorizeView : ComponentBase
             builder.AddContent(0, NotAuthorized);
         }
 
-#if NET6_0_OR_GREATER
         void BuildQueryParameters()
         {
             var queryParameterSupplier = QueryParameterValueSupplier.ForType(Type);
@@ -106,6 +98,5 @@ public class BootstrapBlazorAuthorizeView : ComponentBase
                 queryParameterSupplier.RenderParametersFromQueryString(builder, query);
             }
         }
-#endif
     }
 }

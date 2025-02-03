@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -18,7 +19,7 @@ public partial class Dialog : IDisposable
     /// <summary>
     /// 获得/设置 弹出对话框实例集合
     /// </summary>
-    private Dictionary<Dictionary<string, object>, (bool IsKeyboard, bool IsBackdrop)> DialogParameters { get; } = new();
+    private Dictionary<Dictionary<string, object>, (bool IsKeyboard, bool IsBackdrop)> DialogParameters { get; } = [];
 
     private bool IsKeyboard { get; set; }
 
@@ -65,7 +66,7 @@ public partial class Dialog : IDisposable
         }
     }
 
-    private Task Show(DialogOption option)
+    private async Task Show(DialogOption option)
     {
         OnShownAsync = async () =>
         {
@@ -139,22 +140,38 @@ public partial class Dialog : IDisposable
         {
             parameters.Add(nameof(ModalDialog.CloseButtonText), option.CloseButtonText);
         }
+        if (option.CloseButtonIcon != null)
+        {
+            parameters.Add(nameof(ModalDialog.CloseButtonIcon), option.CloseButtonIcon);
+        }
 
         if (option.SaveButtonText != null)
         {
             parameters.Add(nameof(ModalDialog.SaveButtonText), option.SaveButtonText);
+        }
+        if (option.SaveButtonIcon != null)
+        {
+            parameters.Add(nameof(ModalDialog.SaveButtonIcon), option.SaveButtonIcon);
+        }
+
+        if (option is ResultDialogOption resultOption)
+        {
+            parameters.Add(nameof(ModalDialog.ResultTask), resultOption.ResultTask);
+            if (resultOption.GetDialog != null)
+            {
+                parameters.Add(nameof(ModalDialog.GetResultDialog), resultOption.GetDialog);
+            }
         }
 
         // 保存当前 Dialog 参数
         CurrentParameter = parameters;
 
         // 添加 ModalDialog 到容器中
-        DialogParameters.Add(parameters, (IsKeyboard, IsKeyboard));
-        StateHasChanged();
-        return Task.CompletedTask;
+        DialogParameters.Add(parameters, (IsKeyboard, IsBackdrop));
+        await InvokeAsync(StateHasChanged);
     }
 
-    private static RenderFragment RenderDialog(int index, IEnumerable<KeyValuePair<string, object>> parameter) => builder =>
+    private static RenderFragment RenderDialog(int index, Dictionary<string, object> parameter) => builder =>
     {
         builder.OpenComponent<ModalDialog>(100 + index);
         builder.AddMultipleAttributes(101 + index, parameter);

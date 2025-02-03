@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -69,14 +70,14 @@ public partial class SpeechWave : IDisposable
 
     private bool IsRun { get; set; }
 
-    private Task Run() => Task.Run(async () =>
+    private void Run() => Task.Run(async () =>
     {
         if (!IsRun)
         {
             IsRun = true;
             UsedTimeSpan = TimeSpan.Zero;
             Token ??= new CancellationTokenSource();
-            while (!Token.IsCancellationRequested)
+            while (IsShow)
             {
                 try
                 {
@@ -111,11 +112,13 @@ public partial class SpeechWave : IDisposable
         }
     }
 
+    private bool IsShow => Token != null && !Token.IsCancellationRequested;
+
     /// <summary>
     /// Dispose 方法
     /// </summary>
     /// <param name="disposing"></param>
-    protected void Dispose(bool disposing)
+    protected virtual void Dispose(bool disposing)
     {
         if (disposing)
         {

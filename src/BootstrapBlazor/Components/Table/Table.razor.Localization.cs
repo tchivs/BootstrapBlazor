@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.Extensions.Localization;
 
@@ -343,6 +344,20 @@ public partial class Table<TItem>
     [NotNull]
     public string? DeleteButtonToastResultContent { get; set; }
 
+    /// <summary>
+    /// 获得/设置 高级排序按钮文本
+    /// </summary>
+    [Parameter]
+    [NotNull]
+    public string? AdvancedSortButtonText { get; set; }
+
+    /// <summary>
+    /// 获得/设置 高级排序弹窗文本
+    /// </summary>
+    [Parameter]
+    [NotNull]
+    public string? AdvancedSortModalTitle { get; set; }
+
     [Inject]
     [NotNull]
     private IStringLocalizer<Table<TItem>>? Localizer { get; set; }
@@ -400,8 +415,22 @@ public partial class Table<TItem>
         ExportToastTitle ??= Localizer[nameof(ExportToastTitle)];
         ExportToastContent ??= Localizer[nameof(ExportToastContent)];
         ExportToastInProgressContent ??= Localizer[nameof(ExportToastInProgressContent)];
+        ExportCsvDropdownItemText ??= Localizer[nameof(ExportCsvDropdownItemText)];
         ExportExcelDropdownItemText ??= Localizer[nameof(ExportExcelDropdownItemText)];
+        ExportPdfDropdownItemText ??= Localizer[nameof(ExportPdfDropdownItemText)];
         CopyColumnTooltipText ??= Localizer[nameof(CopyColumnTooltipText)];
         CopyColumnCopiedTooltipText ??= Localizer[nameof(CopyColumnCopiedTooltipText)];
+
+        AdvancedSortButtonText ??= Localizer[nameof(AdvancedSortButtonText)];
+        AdvancedSortModalTitle ??= Localizer[nameof(AdvancedSortModalTitle)];
+
+        ColumnWidthTooltipPrefix ??= Localizer[nameof(ColumnWidthTooltipPrefix)];
+
+        AlignLeftText ??= Localizer[nameof(AlignLeftText)];
+        AlignLeftTooltipText ??= Localizer[nameof(AlignLeftTooltipText)];
+        AlignCenterText ??= Localizer[nameof(AlignCenterText)];
+        AlignCenterTooltipText ??= Localizer[nameof(AlignCenterTooltipText)];
+        AlignRightText ??= Localizer[nameof(AlignRightText)];
+        AlignRightTooltipText ??= Localizer[nameof(AlignRightTooltipText)];
     }
 }

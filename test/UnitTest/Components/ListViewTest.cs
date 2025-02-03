@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 
@@ -13,7 +14,17 @@ public class ListViewTest : BootstrapBlazorTestBase
         {
             pb.Add(a => a.BodyTemplate, p => builder => builder.AddContent(0, $"{p.ImageUrl}-{p.Description}-{p.Category}"));
         });
-        cut.Markup.Contains("listview-body");
+        cut.Contains("listview-body");
+    }
+
+    [Fact]
+    public void Height_Ok()
+    {
+        var cut = Context.RenderComponent<ListView<Product>>(pb =>
+        {
+            pb.Add(a => a.Height, "50vh");
+        });
+        cut.Contains("style=\"height: 50vh;\"");
     }
 
     [Fact]
@@ -44,24 +55,26 @@ public class ListViewTest : BootstrapBlazorTestBase
 
         var item = cut.Find(".listview-item");
         await cut.InvokeAsync(() => item.Click());
-        Assert.True(clicked);
+        cut.WaitForAssertion(() => Assert.True(clicked));
 
         cut.SetParametersAndRender(pb =>
         {
             pb.Add(a => a.GroupName, p => p.Category);
+            pb.Add(a => a.GroupItemOrderCallback, group => group.OrderBy(i => i.Description));
             pb.Add(a => a.IsVertical, true);
+            pb.Add(a => a.GroupHeaderTextCallback, key => key?.ToString());
         });
-        cut.Contains("Group1");
+        cut.WaitForAssertion(() => cut.Contains("Group1"));
         cut.Contains("is-vertical");
 
         clicked = false;
         item = cut.Find(".listview-item");
         await cut.InvokeAsync(() => item.Click());
-        Assert.True(clicked);
+        cut.WaitForAssertion(() => Assert.True(clicked));
     }
 
     [Fact]
-    public void Pageable_Ok()
+    public async Task Pageable_Ok()
     {
         var items = Enumerable.Range(1, 6).Select(i => new Product()
         {
@@ -78,7 +91,7 @@ public class ListViewTest : BootstrapBlazorTestBase
 
         var pages = cut.FindAll(".page-link");
         Assert.Equal(5, pages.Count);
-        cut.InvokeAsync(() => pages[2].Click());
+        await cut.InvokeAsync(() => pages[2].Click());
 
         Task<QueryData<Product>> Query(QueryPageOptions option) => Task.FromResult(new QueryData<Product>()
         {
@@ -113,14 +126,11 @@ public class ListViewTest : BootstrapBlazorTestBase
             pb.Add(a => a.PageItems, 2);
         });
         Assert.True(query);
-
-        query = false;
         cut.InvokeAsync(() => cut.Instance.QueryAsync());
-        Assert.True(query);
     }
 
     [Fact]
-    public void Collapsable_Ok()
+    public void Collapsible_Ok()
     {
         var clicked = false;
         var items = Enumerable.Range(1, 6).Select(i => new Product()
@@ -128,10 +138,16 @@ public class ListViewTest : BootstrapBlazorTestBase
             ImageUrl = $"images/Pic{i}.jpg",
             Description = $"Pic{i}.jpg",
             Category = $"Group{(i % 4) + 1}"
+        }).ToList();
+        items.Add(new()
+        {
+            ImageUrl = "",
+            Description = "test.jpg",
+            Category = null
         });
         var cut = Context.RenderComponent<ListView<Product>>(pb =>
         {
-            pb.Add(a => a.Collapsable, true);
+            pb.Add(a => a.Collapsible, true);
             pb.Add(a => a.GroupName, p => p.Category);
             pb.Add(a => a.BodyTemplate, p => builder => builder.AddContent(0, $"{p.ImageUrl}-{p.Description}-{p.Category}"));
             pb.Add(a => a.OnQueryAsync, option =>
@@ -154,9 +170,19 @@ public class ListViewTest : BootstrapBlazorTestBase
         var collapse = cut.FindComponent<Collapse>();
         Assert.NotNull(collapse);
 
-        var item = cut.Find(".listview-item");
-        cut.InvokeAsync(() => item.Click());
-        Assert.True(clicked);
+        cut.InvokeAsync(() =>
+        {
+            var item = cut.Find(".listview-item");
+            item.Click();
+            Assert.True(clicked);
+        });
+
+        // 设置分组
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.GroupOrderCallback, items => items.OrderBy(i => i.Key));
+            pb.Add(a => a.GroupHeaderTextCallback, key => key?.ToString());
+        });
     }
 
     [Fact]
@@ -170,7 +196,7 @@ public class ListViewTest : BootstrapBlazorTestBase
         });
         var cut = Context.RenderComponent<ListView<Product>>(pb =>
         {
-            pb.Add(a => a.Collapsable, true);
+            pb.Add(a => a.Collapsible, true);
             pb.Add(a => a.IsAccordion, true);
             pb.Add(a => a.GroupName, p => p.Category);
             pb.Add(a => a.BodyTemplate, p => builder => builder.AddContent(0, $"{p.ImageUrl}-{p.Description}-{p.Category}"));
@@ -202,7 +228,7 @@ public class ListViewTest : BootstrapBlazorTestBase
         });
         var cut = Context.RenderComponent<ListView<Product>>(pb =>
         {
-            pb.Add(a => a.Collapsable, true);
+            pb.Add(a => a.Collapsible, true);
             pb.Add(a => a.IsAccordion, true);
             pb.Add(a => a.GroupName, p => p.Category);
             pb.Add(a => a.BodyTemplate, p => builder => builder.AddContent(0, $"{p.ImageUrl}-{p.Description}-{p.Category}"));
@@ -238,7 +264,7 @@ public class ListViewTest : BootstrapBlazorTestBase
         });
         var cut = Context.RenderComponent<ListView<Product>>(pb =>
         {
-            pb.Add(a => a.Collapsable, true);
+            pb.Add(a => a.Collapsible, true);
             pb.Add(a => a.GroupName, p => p.Category);
             pb.Add(a => a.BodyTemplate, p => builder => builder.AddContent(0, $"{p.ImageUrl}-{p.Description}-{p.Category}"));
             pb.Add(a => a.OnQueryAsync, option =>
@@ -258,9 +284,39 @@ public class ListViewTest : BootstrapBlazorTestBase
             pb.Add(a => a.Pageable, true);
             pb.Add(a => a.PageItems, 2);
         });
-        var button = cut.Find(".accordion-button");
-        cut.InvokeAsync(() => button.Click());
-        Assert.NotNull(expect);
+
+        cut.InvokeAsync(() =>
+        {
+            var button = cut.Find(".accordion-button");
+            button.Click();
+            Assert.NotNull(expect);
+        });
+    }
+
+    [Fact]
+    public void EmptyTemplate_Ok()
+    {
+        var cut = Context.RenderComponent<ListView<Product>>(pb =>
+        {
+            pb.Add(a => a.OnQueryAsync, option =>
+            {
+                var ret = new QueryData<Product>()
+                {
+                    Items = [],
+                    TotalCount = 0
+                };
+                return Task.FromResult(ret);
+            });
+            pb.Add(a => a.EmptyTemplate, builder => builder.AddContent(0, "empty-template"));
+        });
+        cut.Contains("empty-template");
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add<RenderFragment?>(a => a.EmptyTemplate, null);
+            pb.Add(a => a.EmptyText, "text-empty");
+        });
+        cut.Contains("text-empty");
     }
 
     private class Product

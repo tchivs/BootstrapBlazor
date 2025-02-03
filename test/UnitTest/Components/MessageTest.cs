@@ -1,12 +1,13 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace UnitTest.Components;
 
-public class MessageTest : MessageTestBase
+public class MessageTest : BootstrapBlazorTestBase
 {
     [Fact]
     public async Task Message_Ok()
@@ -17,7 +18,7 @@ public class MessageTest : MessageTestBase
         {
             pb.AddChildContent<Button>(pb =>
             {
-                pb.Add(a => a.OnClick, async () =>
+                pb.Add(a => a.OnClick, EventCallback.Factory.Create<MouseEventArgs>(this, async e =>
                 {
                     await service.Show(new MessageOption()
                     {
@@ -28,71 +29,108 @@ public class MessageTest : MessageTestBase
                         Icon = "fa-solid fa-font-awesome",
                         IsAutoHide = true,
                         ShowBar = true,
+                        ShowBorder = true,
+                        ShowShadow = true,
                         ShowDismiss = true,
+                        ShowMode = MessageShowMode.Multiple,
                         OnDismiss = () =>
                         {
                             dismiss = true;
                             return Task.CompletedTask;
                         }
                     });
-                });
+                }));
             });
         });
         Assert.NotNull(cut.Instance.MessageContainer);
 
-        var btn = cut.Find("button");
-        await cut.InvokeAsync(() => btn.Click());
+        await cut.InvokeAsync(() =>
+        {
+            var btn = cut.Find("button");
+            btn.Click();
+        });
+        Assert.Contains("data-bb-autohide", cut.Markup);
+        Assert.Contains("data-bb-delay=\"4000\"", cut.Markup);
 
-        var btnClose = cut.Find(".btn-close");
-        await cut.InvokeAsync(() => btnClose.Click());
-        Assert.True(dismiss);
+        var alert = cut.Find(".alert");
+        Assert.NotNull(alert);
+        Assert.NotNull(alert.Id);
 
         var message = cut.FindComponent<Message>();
-        await message.InvokeAsync(() => message.Instance.Clear());
+        await message.Instance.Dismiss(alert.Id);
+        Assert.True(dismiss);
+
+        await cut.InvokeAsync(() => message.Instance.Clear());
     }
 
     [Fact]
-    public async Task SetPlacement_Ok()
+    public void SetPlacement_Ok()
     {
         var cut = Context.RenderComponent<Message>(pb =>
         {
-            pb.Add(a => a.Placement, Placement.Left);
+            pb.Add(a => a.Placement, Placement.Bottom);
         });
 
-        await cut.InvokeAsync(() => cut.Instance.SetPlacement(Placement.Top));
+        cut.InvokeAsync(() => cut.Instance.SetPlacement(Placement.Top));
         Assert.Equal(Placement.Top, cut.Instance.Placement);
     }
 
     [Fact]
-    public void AutoHide_Ok()
+    public async Task Placement_Ok()
     {
-        var cut = Context.RenderComponent<MessageItem>(pb =>
+        var service = Context.Services.GetRequiredService<MessageService>();
+        var cut = Context.RenderComponent<Message>(pb =>
         {
-            pb.Add(a => a.IsAutoHide, false);
+            pb.Add(a => a.Placement, Placement.Bottom);
         });
+        await cut.InvokeAsync(() => service.Show(new MessageOption()
+        {
+            Content = "Test Content",
+            IsAutoHide = false,
+            ShowDismiss = true,
+            Icon = "fa-solid fa-font-awesome"
+        }, cut.Instance));
+        Assert.DoesNotContain("data-bb-autohide", cut.Markup);
 
-        cut.DoesNotContain("data-autohide");
+        var alert = cut.Find(".alert");
+        Assert.NotNull(alert);
+        Assert.NotNull(alert.Id);
+
+        await cut.Instance.Dismiss(alert.Id);
+        await cut.Instance.Dismiss("test_id");
+        await cut.InvokeAsync(() => cut.Instance.Clear());
+
+        await cut.InvokeAsync(() => service.Show(new MessageOption()
+        {
+            ChildContent = builder => builder.AddContent(0, new MarkupString("<div class=\"custom-message-template\">Custom Message</div>"))
+        }, cut.Instance));
+        Assert.Contains("<div class=\"custom-message-template\">Custom Message</div>", cut.Markup);
     }
 
     [Fact]
-    public void ShowBorder_Ok()
+    public async Task ChildContent_Ok()
     {
-        var cut = Context.RenderComponent<MessageItem>(pb =>
+        var service = Context.Services.GetRequiredService<MessageService>();
+        var cut = Context.RenderComponent<Message>();
+        await cut.InvokeAsync(() => service.Show(new MessageOption()
         {
-            pb.Add(a => a.ShowBorder, true);
-        });
-
-        cut.Contains("border-primary");
+            ChildContent = builder => builder.AddContent(0, new MarkupString("<div class=\"custom-message-template\">Custom Message</div>"))
+        }, cut.Instance));
+        Assert.Contains("<div class=\"custom-message-template\">Custom Message</div>", cut.Markup);
     }
 
     [Fact]
-    public void Showshadow_Ok()
+    public async Task ShowMode_Ok()
     {
-        var cut = Context.RenderComponent<MessageItem>(pb =>
+        var service = Context.Services.GetRequiredService<MessageService>();
+        var cut = Context.RenderComponent<Message>();
+        await cut.InvokeAsync(() => service.Show(new MessageOption()
         {
-            pb.Add(a => a.ShowShadow, true);
-        });
-
-        cut.Contains("shadow");
+            Content = "Test Content",
+            IsAutoHide = false,
+            ShowDismiss = true,
+            Icon = "fa-solid fa-font-awesome",
+            ShowMode = MessageShowMode.Single
+        }, cut.Instance));
     }
 }

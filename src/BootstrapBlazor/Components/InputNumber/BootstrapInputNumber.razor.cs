@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.Extensions.Localization;
 using System.Globalization;
@@ -38,13 +39,13 @@ public partial class BootstrapInputNumber<TValue>
     /// 获得/设置 数值增加时回调委托
     /// </summary>
     [Parameter]
-    public Func<TValue, Task>? OnIncrement { get; set; }
+    public Func<TValue?, Task>? OnIncrement { get; set; }
 
     /// <summary>
     /// 获得/设置 数值减少时回调委托
     /// </summary>
     [Parameter]
-    public Func<TValue, Task>? OnDecrement { get; set; }
+    public Func<TValue?, Task>? OnDecrement { get; set; }
 
     /// <summary>
     /// 获得/设置 最小值
@@ -90,22 +91,25 @@ public partial class BootstrapInputNumber<TValue>
     [NotNull]
     private IIconTheme? IconTheme { get; set; }
 
-    /// <summary>
-    /// SetParametersAsync 方法
-    /// </summary>
-    /// <param name="parameters"></param>
-    /// <returns></returns>
-    public override Task SetParametersAsync(ParameterView parameters)
-    {
-        // Unwrap Nullable<T>, because InputBase already deals with the Nullable aspect
-        // of it for us. We will only get asked to parse the T for nonempty inputs.
-        var targetType = Nullable.GetUnderlyingType(typeof(TValue)) ?? typeof(TValue);
-        if (!typeof(TValue).IsNumber())
-        {
-            throw new InvalidOperationException($"The type '{targetType}' is not a supported numeric type.");
-        }
+    [Inject]
+    [NotNull]
+    private IOptions<BootstrapBlazorOptions>? StepOption { get; set; }
 
-        return base.SetParametersAsync(parameters);
+    private string? _lastInputValueString;
+
+    private bool _manualInput;
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        if (UseInputEvent)
+        {
+            _lastInputValueString ??= Value?.ToString();
+        }
     }
 
     /// <summary>
@@ -119,7 +123,31 @@ public partial class BootstrapInputNumber<TValue>
         MinusIcon ??= IconTheme.GetIconByKey(ComponentIcons.InputNumberMinusIcon);
         PlusIcon ??= IconTheme.GetIconByKey(ComponentIcons.InputNumberPlusIcon);
 
-        SetStep();
+        StepString = Step ?? StepOption.Value.GetStep<TValue>() ?? "any";
+
+        if (Value is null)
+        {
+            _lastInputValueString = "";
+        }
+
+        if (UseInputEvent && !_manualInput)
+        {
+            _lastInputValueString = GetFormatString(Value);
+        }
+    }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    /// <param name="firstRender"></param>
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+
+        if (_manualInput)
+        {
+            _manualInput = false;
+        }
     }
 
     /// <summary>
@@ -129,11 +157,13 @@ public partial class BootstrapInputNumber<TValue>
     protected override string? FormatParsingErrorMessage() => string.Format(CultureInfo.InvariantCulture, ParsingErrorMessage, DisplayText);
 
     /// <summary>
-    /// Formats the value as a string. Derived classes can override this to determine the formatting used for <c>CurrentValueAsString</c>.
+    /// Formats the value as a string. Derived classes can override this to determine the formatting used for <see cref="ValidateBase{TValue}.CurrentValueAsString"/>.
     /// </summary>
     /// <param name="value">The value to format.</param>
     /// <returns>A string representation of the value.</returns>
-    protected override string? FormatValueAsString(TValue value) => Formatter != null
+    protected override string? FormatValueAsString(TValue? value) => UseInputEvent ? _lastInputValueString : GetFormatString(value);
+
+    private string? GetFormatString(TValue? value) => Formatter != null
         ? Formatter.Invoke(value)
         : (!string.IsNullOrEmpty(FormatString) && value != null
             ? Utility.Format(value, FormatString)
@@ -145,7 +175,7 @@ public partial class BootstrapInputNumber<TValue>
     /// <param name="value"></param>
     /// <returns></returns>
     /// <exception cref="InvalidOperationException"></exception>
-    protected virtual string? InternalFormat(TValue value) => value switch
+    protected virtual string? InternalFormat(TValue? value) => value switch
     {
         null => null,
         int @int => BindConverter.FormatValue(@int, CultureInfo.InvariantCulture),
@@ -157,23 +187,7 @@ public partial class BootstrapInputNumber<TValue>
         _ => throw new InvalidOperationException($"Unsupported type {value!.GetType()}"),
     };
 
-    private void SetStep()
-    {
-        var val = CurrentValue;
-        switch (val)
-        {
-            case int:
-            case long:
-            case short:
-                StepString = Step ?? "1";
-                break;
-            case float:
-            case double:
-            case decimal:
-                StepString = Step ?? "0.01";
-                break;
-        }
-    }
+    private string GetStepString() => (string.IsNullOrEmpty(StepString) || StepString.Equals("any", StringComparison.OrdinalIgnoreCase)) ? "1" : StepString;
 
     /// <summary>
     /// 点击减少按钮式时回调此方法
@@ -182,25 +196,26 @@ public partial class BootstrapInputNumber<TValue>
     private async Task OnClickDec()
     {
         var val = CurrentValue;
+        var step = GetStepString();
         switch (val)
         {
             case int @int:
-                val = (TValue)(object)(@int - int.Parse(StepString));
+                val = (TValue)(object)(@int - int.Parse(step));
                 break;
             case long @long:
-                val = (TValue)(object)(@long - long.Parse(StepString));
+                val = (TValue)(object)(@long - long.Parse(step));
                 break;
             case short @short:
-                val = (TValue)(object)(short)(@short - short.Parse(StepString));
+                val = (TValue)(object)(short)(@short - short.Parse(step));
                 break;
             case float @float:
-                val = (TValue)(object)(@float - float.Parse(StepString));
+                val = (TValue)(object)(@float - float.Parse(step));
                 break;
             case double @double:
-                val = (TValue)(object)(@double - double.Parse(StepString));
+                val = (TValue)(object)(@double - double.Parse(step));
                 break;
             case decimal @decimal:
-                val = (TValue)(object)(@decimal - decimal.Parse(StepString));
+                val = (TValue)(object)(@decimal - decimal.Parse(step));
                 break;
         }
         CurrentValue = SetMax(SetMin(val));
@@ -217,25 +232,26 @@ public partial class BootstrapInputNumber<TValue>
     private async Task OnClickInc()
     {
         var val = CurrentValue;
+        var step = GetStepString();
         switch (val)
         {
             case int @int:
-                val = (TValue)(object)(@int + int.Parse(StepString));
+                val = (TValue)(object)(@int + int.Parse(step));
                 break;
             case long @long:
-                val = (TValue)(object)(@long + long.Parse(StepString));
+                val = (TValue)(object)(@long + long.Parse(step));
                 break;
             case short @short:
-                val = (TValue)(object)(short)(@short + short.Parse(StepString));
+                val = (TValue)(object)(short)(@short + short.Parse(step));
                 break;
             case float @float:
-                val = (TValue)(object)(@float + float.Parse(StepString));
+                val = (TValue)(object)(@float + float.Parse(step));
                 break;
             case double @double:
-                val = (TValue)(object)(@double + double.Parse(StepString));
+                val = (TValue)(object)(@double + double.Parse(step));
                 break;
             case decimal @decimal:
-                val = (TValue)(object)(@decimal + decimal.Parse(StepString));
+                val = (TValue)(object)(@decimal + decimal.Parse(step));
                 break;
         }
         CurrentValue = SetMax(SetMin(val));
@@ -246,18 +262,33 @@ public partial class BootstrapInputNumber<TValue>
     }
 
     /// <summary>
-    /// 失去焦点是触发此方法
+    /// <inheritdoc/>
     /// </summary>
     /// <returns></returns>
-    private void OnBlur()
+    protected override async Task OnBlur()
     {
         if (!PreviousParsingAttemptFailed)
         {
             CurrentValue = SetMax(SetMin(Value));
         }
+        else
+        {
+            CurrentValue = default!;
+        }
+
+        if (NullableUnderlyingType != null && string.IsNullOrEmpty(CurrentValueAsString))
+        {
+            // set component value empty
+            await InvokeVoidAsync("clear", Id);
+        }
+
+        if (OnBlurAsync != null)
+        {
+            await OnBlurAsync(Value);
+        }
     }
 
-    private TValue SetMin(TValue val)
+    private TValue? SetMin(TValue? val)
     {
         if (!string.IsNullOrEmpty(Min))
         {
@@ -286,7 +317,7 @@ public partial class BootstrapInputNumber<TValue>
         return val;
     }
 
-    private TValue SetMax(TValue val)
+    private TValue? SetMax(TValue? val)
     {
         if (!string.IsNullOrEmpty(Max))
         {
@@ -313,5 +344,40 @@ public partial class BootstrapInputNumber<TValue>
             }
         }
         return val;
+    }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    /// <param name="value"></param>
+    /// <param name="result"></param>
+    /// <param name="validationErrorMessage"></param>
+    /// <returns></returns>
+    protected override bool TryParseValueFromString(string value, [MaybeNullWhen(false)] out TValue result, out string? validationErrorMessage)
+    {
+        bool ret;
+        if (string.IsNullOrEmpty(value))
+        {
+            result = default;
+            validationErrorMessage = null;
+
+            // nullable data type do not run here
+            _lastInputValueString = result!.ToString();
+            ret = true;
+        }
+        else
+        {
+            ret = base.TryParseValueFromString(value, out result, out validationErrorMessage);
+            if (ret && UseInputEvent)
+            {
+                _lastInputValueString = value;
+            }
+        }
+
+        if (UseInputEvent)
+        {
+            _manualInput = true;
+        }
+        return ret;
     }
 }

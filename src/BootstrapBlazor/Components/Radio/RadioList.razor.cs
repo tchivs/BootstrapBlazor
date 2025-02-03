@@ -1,28 +1,17 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using System.Collections;
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// 
+/// 单选框组合组件
 /// </summary>
 public partial class RadioList<TValue>
 {
-    /// <summary>
-    /// 获得/设置 按钮颜色
-    /// </summary>
-    [Parameter]
-    public Color Color { get; set; }
-
-    /// <summary>
-    /// 获得/设置 是否为按钮样式 默认 false
-    /// </summary>
-    [Parameter]
-    public bool IsButton { get; set; }
-
     /// <summary>
     /// 获得/设置 值为可为空枚举类型时是否自动添加空值 默认 false 自定义空值显示文本请参考 <see cref="NullItemText"/>
     /// </summary>
@@ -37,12 +26,6 @@ public partial class RadioList<TValue>
     public string? NullItemText { get; set; }
 
     /// <summary>
-    /// 获得/设置 项模板
-    /// </summary>
-    [Parameter]
-    public RenderFragment<SelectedItem>? ItemTemplate { get; set; }
-
-    /// <summary>
     /// 获得/设置 未设置选中项时是否自动选择第一项 默认 true
     /// </summary>
     [Parameter]
@@ -50,13 +33,24 @@ public partial class RadioList<TValue>
 
     private string? GroupName => Id;
 
-    private string? RadioClassString => CssBuilder.Default("radio-list")
-        .AddClass("form-control", !IsButton)
-        .AddClass("is-button", IsButton)
+    private string? ClassString => CssBuilder.Default("radio-list form-control")
+        .AddClass("no-border", !ShowBorder && ValidCss != "is-invalid")
+        .AddClass("is-vertical", IsVertical)
+        .AddClass(CssClass).AddClass(ValidCss)
+        .Build();
+
+    private string? ButtonClassString => CssBuilder.Default("radio-list btn-group")
+        .AddClass("disabled", IsDisabled)
+        .AddClass("btn-group-vertical", IsVertical)
+        .AddClassFromAttributes(AdditionalAttributes)
+        .Build();
+
+    private string? GetButtonItemClassString(SelectedItem item) => CssBuilder.Default("btn")
+        .AddClass($"active bg-{Color.ToDescriptionString()}", CurrentValueAsString == item.Value)
         .Build();
 
     /// <summary>
-    /// OnParametersSet 方法
+    /// <inheritdoc/>
     /// </summary>
     protected override void OnParametersSet()
     {
@@ -77,11 +71,11 @@ public partial class RadioList<TValue>
     }
 
     /// <summary>
-    /// 格式化 Value 方法
+    /// <inheritdoc/>
     /// </summary>
     /// <param name="value"></param>
     /// <returns></returns>
-    protected override string? FormatValueAsString(TValue value) => value is SelectedItem v ? v.Value : base.FormatValueAsString(value);
+    protected override string? FormatValueAsString(TValue? value) => value is SelectedItem v ? v.Value : value?.ToString();
 
     /// <summary>
     /// <inheritdoc/>

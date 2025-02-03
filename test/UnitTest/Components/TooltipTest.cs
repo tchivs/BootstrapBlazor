@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 
@@ -23,20 +24,20 @@ public class TooltipTest : BootstrapBlazorTestBase
         var cut = Context.RenderComponent<Tooltip>(pb =>
         {
             pb.Add(a => a.Title, "test_tooltip");
-            pb.Add(a => a.ChildContent, builder => builder.AddContent(0, "test-childcontent"));
+            pb.Add(a => a.ChildContent, builder => builder.AddContent(0, "test-child-content"));
         });
-        Assert.Contains("test-childcontent", cut.Markup);
+        Assert.Contains("test-child-content", cut.Markup);
     }
 
     [Fact]
-    public void SetParameters_Ok()
+    public async Task SetParameters_Ok()
     {
         var cut = Context.RenderComponent<Tooltip>(pb =>
         {
             pb.Add(a => a.Title, "test_tooltip");
         });
         var tooltip = cut.Instance;
-        cut.InvokeAsync(() => tooltip.SetParameters("title", Placement.Top, "trigger", "custom-class", true, false, "10", ".selector"));
+        await cut.InvokeAsync(() => tooltip.SetParameters("title", Placement.Top, "trigger", "custom-class", true, false, "10", ".selector", "10,20"));
         Assert.Equal("title", tooltip.Title);
         Assert.Contains("data-bs-placement=\"top\"", cut.Markup);
         Assert.Contains("data-bs-trigger=\"trigger\"", cut.Markup);
@@ -45,6 +46,7 @@ public class TooltipTest : BootstrapBlazorTestBase
         Assert.Contains("data-bs-sanitize=\"false\"", cut.Markup);
         Assert.Contains("data-bs-delay=\"10\"", cut.Markup);
         Assert.Contains("data-bs-selector=\".selector\"", cut.Markup);
+        Assert.Contains("data-bs-offset=\"10,20\"", cut.Markup);
     }
 
     [Fact]
@@ -161,6 +163,17 @@ public class TooltipTest : BootstrapBlazorTestBase
         {
             pb.Add(a => a.Placement, Placement.Top);
         });
-        Assert.Contains("data-bs-placement=\"top\"", cut.Markup);
+        cut.WaitForAssertion(() => Assert.Contains("data-bs-placement=\"top\"", cut.Markup));
+    }
+
+    [Fact]
+    public void FallbackPlacements_Ok()
+    {
+        var cut = Context.RenderComponent<Tooltip>(pb =>
+        {
+            pb.Add(a => a.Title, "test_tooltip");
+            pb.Add(a => a.FallbackPlacements, ["top", "left"]);
+        });
+        cut.Contains("data-bs-fallbackPlacements=\"top,left\"");
     }
 }

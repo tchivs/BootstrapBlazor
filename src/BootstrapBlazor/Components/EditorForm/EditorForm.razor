@@ -2,21 +2,13 @@
 @typeparam TModel
 @inherits BootstrapComponentBase
 
-<CascadingValue Value="@EditorItems" IsFixed="true">
-    @FieldItems?.Invoke(Model)
-</CascadingValue>
-
-@if (FirstRender)
-{
-    <div class="ef-loading">
-        <Spinner Color="Color.Primary" />
-    </div>
-}
-else
-{
-    <div class="@ClassString">
-        <CascadingValue Value="this" Name="EidtorForm">
-            @if(ShowUnsetGroupItemsOnTop)
+<div class="@ClassString">
+    <CascadingValue Value="@_editorItems" IsFixed="true">
+        @FieldItems?.Invoke(Model)
+    </CascadingValue>
+    <CascadingValue Value="this" Name="EditorForm">
+        <RenderTemplate>
+            @if (ShowUnsetGroupItemsOnTop)
             {
                 if (UnsetGroupItems.Any())
                 {
@@ -38,20 +30,21 @@ else
                     @RenderUnsetGroupItems
                 }
             }
-        </CascadingValue>
-    </div>
+        </RenderTemplate>
+    </CascadingValue>
+
     @if (Buttons != null)
     {
-        <div class="form-footer">
+        <div class="bb-editor-footer form-footer">
             @Buttons
         </div>
     }
-}
+</div>
 
 @code
 {
     RenderFragment RenderUnsetGroupItems =>
-    @<div class="@FormClassString">
+    @<div class="@FormClassString" style="@FormStyleString">
         @foreach (var item in UnsetGroupItems)
         {
             var render = GetRenderTemplate(item);
@@ -73,7 +66,6 @@ else
         <div class="@FormClassString">
             @foreach (var item in g.Value)
             {
-
                 var render = GetRenderTemplate(item);
                 @if (render != null)
                 {

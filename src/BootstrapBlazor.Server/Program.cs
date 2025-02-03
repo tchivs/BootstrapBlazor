@@ -1,49 +1,23 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using BootstrapBlazor.Server.Extensions;
+using BootstrapBlazor.Server.Components;
+using BootstrapBlazor.Server.Components.Layout;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.SignalR;
-using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Options;
 using System.Text;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
+// 增加中文编码支持用于定位服务
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-builder.Services.AddLogging(logBuilder => logBuilder.AddFileLogger());
-builder.Services.AddCors();
-builder.Services.AddResponseCompression();
+var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorPages();
-builder.Services.AddServerSideBlazor();
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 
-// 获得当前主题配置
-var themes = builder.Configuration.GetSection("Themes")
-    .GetChildren()
-    .Select(c => new KeyValuePair<string, string>(c.Key, c.Value ?? ""));
-
-// 增加 BootstrapBlazor 服务
-builder.Services.AddBootstrapBlazorServices(options =>
-{
-    // 统一设置 Toast 组件自动消失时间
-    options.Themes.AddRange(themes);
-});
-
-builder.Services.Configure<HubOptions>(option => option.MaximumReceiveMessageSize = null);
-
-builder.Services.ConfigureTabItemMenuBindOptions(options =>
-{
-    options.Binders.Add("layout-demo", new() { Text = "Text 1" });
-    options.Binders.Add("layout-demo?text=Parameter", new() { Text = "Text 2" });
-    options.Binders.Add("layout-demo/text=Parameter", new() { Text = "Text 3" });
-});
-
-builder.Services.ConfigureMaterialDesignIconTheme();
-builder.Services.ConfigureIconThemeOptions(options => options.ThemeKey = "fa");
+builder.Services.AddBootstrapBlazorServerService();
 
 var app = builder.Build();
 
@@ -57,38 +31,27 @@ if (option != null)
 // 启用转发中间件
 app.UseForwardedHeaders(new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.All });
 
-if (app.Environment.IsDevelopment())
+if (!app.Environment.IsDevelopment())
 {
-    app.UseDeveloperExceptionPage();
-}
-else
-{
-    app.UseExceptionHandler("/Error");
-    app.UseResponseCompression();
-    app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = ctx => ctx.ProcessCache(app.Configuration) });
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
 }
 
-var provider = new FileExtensionContentTypeProvider();
-provider.Mappings[".properties"] = "application/octet-stream";
+app.UseAntiforgery();
+app.UseBootstrapBlazor();
 
-app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = provider });
-app.UseStaticFiles();
-
-app.UseRouting();
+app.MapStaticAssets();
 
 var cors = app.Configuration["AllowOrigins"]?.Split(',', StringSplitOptions.RemoveEmptyEntries);
-if (cors?.Any() ?? false)
+if (cors?.Length > 0)
 {
-    app.UseCors(builder => builder.WithOrigins()
+    app.UseCors(options => options.WithOrigins()
         .AllowAnyHeader()
         .AllowAnyMethod()
         .AllowCredentials());
 }
 
-app.UseBootstrapBlazor();
-
 app.MapDefaultControllerRoute();
-app.MapBlazorHub();
-app.MapFallbackToPage("/_Host");
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
 
 app.Run();

@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 
@@ -24,9 +25,9 @@ public class BlockTest : TestBase
         var cut = Context.RenderComponent<Block>(builder =>
         {
             builder.Add(a => a.Condition, true);
-            builder.Add(a => a.Authorized, b => b.AddContent(0, "Authorizated"));
+            builder.Add(a => a.Authorized, b => b.AddContent(0, "Authorized"));
         });
-        Assert.Equal("Authorizated", cut.Markup);
+        Assert.Equal("Authorized", cut.Markup);
     }
 
     [Fact]
@@ -59,7 +60,7 @@ public class BlockTest : TestBase
     };
 }
 
-public class BlockAuthorizationTest : AuthorizationTestBase
+public class BlockAuthorizationTest : AuthorizationViewTestBase
 {
     [Fact]
     public void User_Ok()

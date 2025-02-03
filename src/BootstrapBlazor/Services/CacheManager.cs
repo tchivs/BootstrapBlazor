@@ -1,17 +1,20 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using BootstrapBlazor.Localization;
-using BootstrapBlazor.Localization.Json;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
+
+#if NET8_0_OR_GREATER
+using System.Runtime.CompilerServices;
+using System.Collections.Frozen;
+#endif
 
 namespace BootstrapBlazor.Components;
 
@@ -27,16 +30,15 @@ internal class CacheManager : ICacheManager
     [NotNull]
     private static CacheManager? Instance { get; set; }
 
+    private const string CacheKeyPrefix = "BootstrapBlazor";
+
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="provider"></param>
     /// <param name="memoryCache"></param>
-    public CacheManager(
-        IServiceProvider provider,
-        IMemoryCache memoryCache)
+    public CacheManager(IServiceProvider provider, IMemoryCache memoryCache)
     {
-        // 为了避免依赖导致的报错，构造函数避免使用其他服务
         Provider = provider;
         Cache = memoryCache;
         Instance = this;
@@ -47,15 +49,13 @@ internal class CacheManager : ICacheManager
     /// </summary>
     public TItem GetOrCreate<TItem>(object key, Func<ICacheEntry, TItem> factory) => Cache.GetOrCreate(key, entry =>
     {
-#if DEBUG
-        entry.SlidingExpiration = TimeSpan.FromSeconds(500000);
-#endif
+        var item = factory(entry);
 
-        if (key is not string)
+        if (entry.SlidingExpiration == null && entry.AbsoluteExpiration == null && entry.Priority != CacheItemPriority.NeverRemove)
         {
             entry.SetSlidingExpiration(TimeSpan.FromMinutes(5));
         }
-        return factory(entry);
+        return item;
     })!;
 
     /// <summary>
@@ -63,15 +63,13 @@ internal class CacheManager : ICacheManager
     /// </summary>
     public Task<TItem> GetOrCreateAsync<TItem>(object key, Func<ICacheEntry, Task<TItem>> factory) => Cache.GetOrCreateAsync(key, async entry =>
     {
-#if DEBUG
-        entry.SlidingExpiration = TimeSpan.FromSeconds(5);
-#endif
+        var item = await factory(entry);
 
-        if (key is not string)
+        if (entry.SlidingExpiration == null && entry.AbsoluteExpiration == null && entry.Priority != CacheItemPriority.NeverRemove)
         {
             entry.SetSlidingExpiration(TimeSpan.FromMinutes(5));
         }
-        return await factory(entry);
+        return item;
     })!;
 
     /// <summary>
@@ -98,6 +96,10 @@ internal class CacheManager : ICacheManager
     /// <param name="key"></param>
     public void Clear(object? key)
     {
+        if (key is "BootstrapBlazor_StartTime")
+        {
+            return;
+        }
         if (key is not null)
         {
             Cache.Remove(key);
@@ -111,9 +113,18 @@ internal class CacheManager : ICacheManager
     /// <summary>
     /// 设置 App 开始时间
     /// </summary>
-    public void SetStartTime()
+    public void SetStartTime() => SetStartTime(DateTimeOffset.Now);
+
+    /// <summary>
+    /// 设置 App 开始时间
+    /// </summary>
+    private void SetStartTime(DateTimeOffset startDateTimeOffset)
     {
-        GetOrCreate("BootstrapBlazor_StartTime", entry => DateTimeOffset.Now);
+        GetOrCreate("BootstrapBlazor_StartTime", entry =>
+        {
+            entry.Priority = CacheItemPriority.NeverRemove;
+            return startDateTimeOffset;
+        });
     }
 
     /// <summary>
@@ -130,6 +141,83 @@ internal class CacheManager : ICacheManager
         return ret;
     }
 
+    /// <summary>
+    /// 获得 缓存数量
+    /// </summary>
+    public long Count
+    {
+        get
+        {
+            var count = 0;
+            if (Cache is MemoryCache c)
+            {
+                count = c.Count;
+            }
+            return count;
+        }
+    }
+
+#if NET9_0_OR_GREATER
+    /// <summary>
+    /// 获得 缓存键集合
+    /// </summary>
+    public IEnumerable<object> Keys
+    {
+        get
+        {
+            var keys = Enumerable.Empty<object>();
+            if (Cache is MemoryCache c)
+            {
+                keys = c.Keys;
+            }
+            return keys;
+        }
+    }
+
+    private object? _coherentStateInstance = null;
+
+    private MethodInfo? _allValuesMethodInfo = null;
+
+    private static readonly FieldInfo _coherentStateFieldInfo = typeof(MemoryCache).GetField("_coherentState", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+    private static MethodInfo GetAllValuesMethodInfo(Type type) => type.GetMethod("GetAllValues", BindingFlags.Instance | BindingFlags.Public)!;
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    /// <param name="key"></param>
+    /// <param name="entry"></param>
+    /// <returns></returns>
+    public bool TryGetCacheEntry(object? key, [NotNullWhen(true)] out ICacheEntry? entry)
+    {
+        entry = null;
+        if (key == null)
+        {
+            return false;
+        }
+
+        if (Cache is MemoryCache cache)
+        {
+            var values = GetAllValues(cache);
+            entry = values.Find(e => e.Key == key);
+        }
+        return entry != null;
+    }
+
+    private List<ICacheEntry> GetAllValues(MemoryCache cache)
+    {
+        _coherentStateInstance = _coherentStateFieldInfo.GetValue(cache)!;
+        _allValuesMethodInfo ??= GetAllValuesMethodInfo(_coherentStateInstance.GetType());
+
+        var ret = new List<ICacheEntry>();
+        if (_allValuesMethodInfo.Invoke(_coherentStateInstance, null) is IEnumerable<ICacheEntry> values)
+        {
+            ret.AddRange(values);
+        }
+        return ret;
+    }
+#endif
+
     #region Count
     public static int ElementCount(object? value)
     {
@@ -137,16 +225,12 @@ internal class CacheManager : ICacheManager
         if (value != null)
         {
             var type = value.GetType();
-            var cacheKey = $"Lambda-Count-{type.FullName}";
+            var cacheKey = $"{CacheKeyPrefix}-Lambda-Count-{type.GetUniqueTypeName()}";
             var invoker = Instance.GetOrCreate(cacheKey, entry =>
             {
-                entry.SetDynamicAssemblyPolicy(type);
                 return LambdaExtensions.CountLambda(type).Compile();
             });
-            if (invoker != null)
-            {
-                ret = invoker(value);
-            }
+            ret = invoker(value);
         }
         return ret;
     }
@@ -154,7 +238,7 @@ internal class CacheManager : ICacheManager
 
     #region Localizer
     /// <summary>
-    /// 
+    /// 通过 Type 获得 <see cref="IStringLocalizer"/> 实例
     /// </summary>
     /// <param name="resourceSource"></param>
     /// <returns></returns>
@@ -163,10 +247,10 @@ internal class CacheManager : ICacheManager
         : Instance.Provider.GetRequiredService<IStringLocalizerFactory>().Create(resourceSource);
 
     /// <summary>
-    /// 
+    /// 获得 <see cref="JsonLocalizationOptions"/> 值
     /// </summary>
     /// <returns></returns>
-    public static JsonLocalizationOptions GetJsonLocalizationOption()
+    private static JsonLocalizationOptions GetJsonLocalizationOption()
     {
         var localizationOptions = Instance.Provider.GetRequiredService<IOptions<JsonLocalizationOptions>>();
         return localizationOptions.Value;
@@ -175,37 +259,36 @@ internal class CacheManager : ICacheManager
     /// <summary>
     /// 通过 程序集与类型获得 IStringLocalizer 实例
     /// </summary>
-    /// <param name="assembly"></param>
-    /// <param name="typeName"></param>
+    /// <param name="assembly">Assembly 程序集实例</param>
+    /// <param name="typeName">类型名称</param>
     /// <returns></returns>
-    public static IStringLocalizer? GetStringLocalizerFromService(Assembly assembly, string typeName) => assembly.IsDynamic
-        ? null
-        : Instance.GetOrCreate($"{nameof(GetStringLocalizerFromService)}-{CultureInfo.CurrentUICulture.Name}-{assembly.GetName().Name}-{typeName}", entry =>
+    public static IStringLocalizer? GetStringLocalizerFromService(Assembly assembly, string typeName)
     {
+        if (assembly.IsDynamic)
+        {
+            return null;
+        }
         IStringLocalizer? ret = null;
         var factories = Instance.Provider.GetServices<IStringLocalizerFactory>();
-        if (factories != null)
+        var factory = factories.LastOrDefault(a => a is not JsonStringLocalizerFactory);
+        if (factory != null)
         {
-            var factory = factories.LastOrDefault(a => a is not JsonStringLocalizerFactory);
-            if (factory != null)
+            var type = assembly.GetType(typeName);
+            if (type != null)
             {
-                var type = assembly.GetType(typeName);
-                if (type != null)
-                {
-                    ret = factory.Create(type);
-                }
+                ret = factory.Create(type);
             }
         }
         return ret;
-    });
+    }
 
     /// <summary>
     /// 获取指定文化本地化资源集合
     /// </summary>
-    /// <param name="assembly"></param>
-    /// <param name="typeName"></param>
-    /// <returns></returns>
-    public static IEnumerable<LocalizedString>? GetAllStringsByTypeName(Assembly assembly, string typeName) => GetJsonStringByTypeName(GetJsonLocalizationOption(), assembly, typeName, CultureInfo.CurrentUICulture.Name);
+    /// <param name="assembly">Assembly 程序集实例</param>
+    /// <param name="typeName">类型名称</param>
+    public static IEnumerable<LocalizedString>? GetAllStringsByTypeName(Assembly assembly, string typeName)
+        => GetJsonStringByTypeName(GetJsonLocalizationOption(), assembly, typeName, CultureInfo.CurrentUICulture.Name);
 
     /// <summary>
     /// 通过指定程序集获取所有本地化信息键值集合
@@ -218,34 +301,51 @@ internal class CacheManager : ICacheManager
     /// <returns></returns>
     public static IEnumerable<LocalizedString>? GetJsonStringByTypeName(JsonLocalizationOptions option, Assembly assembly, string typeName, string? cultureName = null, bool forceLoad = false)
     {
-        return assembly.IsDynamic ? null : GetJsonStringByTypeName();
-
-        IEnumerable<LocalizedString>? GetJsonStringByTypeName()
+        if (assembly.IsDynamic)
         {
-            cultureName ??= CultureInfo.CurrentUICulture.Name;
-            var key = $"{nameof(GetJsonStringByTypeName)}-{assembly.GetName().Name}-{cultureName}";
-            var typeKey = $"{key}-{typeName}";
-            if (forceLoad)
-            {
-                Instance.Cache.Remove(key);
-                Instance.Cache.Remove(typeKey);
-            }
-            return Instance.GetOrCreate(typeKey, entry =>
-            {
-                var sections = Instance.GetOrCreate(key, entry => option.GetJsonStringFromAssembly(assembly, cultureName));
-                return sections.FirstOrDefault(kv => typeName.Equals(kv.Key, StringComparison.OrdinalIgnoreCase))?
-                    .GetChildren()
-                    .SelectMany(kv => new[] { new LocalizedString(kv.Key, kv.Value!, false, typeName) });
-            });
+            return null;
         }
+
+        cultureName ??= CultureInfo.CurrentUICulture.Name;
+        if (string.IsNullOrEmpty(cultureName))
+        {
+            return [];
+        }
+
+        var key = $"{CacheKeyPrefix}-{nameof(GetJsonStringByTypeName)}-{assembly.GetUniqueName()}-{cultureName}";
+        if (forceLoad)
+        {
+            Instance.Cache.Remove(key);
+        }
+
+        var localizedItems = Instance.GetOrCreate(key, entry =>
+        {
+            var sections = option.GetJsonStringFromAssembly(assembly, cultureName);
+            var items = sections.SelectMany(section => section.GetChildren().Select(kv =>
+            {
+                var value = kv.Value;
+                if (value == null && option.UseKeyWhenValueIsNull == true)
+                {
+                    value = kv.Key;
+                }
+                return new LocalizedString(kv.Key, value ?? "", false, section.Key);
+            }));
+#if NET8_0_OR_GREATER
+            return items.ToFrozenSet();
+#else
+            return items.ToHashSet();
+#endif
+        });
+        return localizedItems.Where(item => item.SearchedLocation!.Equals(typeName, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
     /// 通过 ILocalizationResolve 接口实现类获得本地化键值集合
     /// </summary>
+    /// <param name="typeName"></param>
     /// <param name="includeParentCultures"></param>
     /// <returns></returns>
-    public static IEnumerable<LocalizedString> GetAllStringsFromResolve(bool includeParentCultures = true) => Instance.GetOrCreate($"{nameof(GetAllStringsFromResolve)}-{CultureInfo.CurrentUICulture.Name}", entry => Instance.Provider.GetRequiredService<ILocalizationResolve>().GetAllStringsByCulture(includeParentCultures));
+    public static IEnumerable<LocalizedString> GetTypeStringsFromResolve(string typeName, bool includeParentCultures = true) => Instance.Provider.GetRequiredService<ILocalizationResolve>().GetAllStringsByType(typeName, includeParentCultures);
     #endregion
 
     #region DisplayName
@@ -257,56 +357,47 @@ internal class CacheManager : ICacheManager
     /// <returns></returns>
     public static string GetDisplayName(Type modelType, string fieldName)
     {
-        var cacheKey = $"{nameof(GetDisplayName)}-{CultureInfo.CurrentUICulture.Name}-{modelType.FullName}-{fieldName}";
-        var displayName = Instance.GetOrCreate(cacheKey, entry =>
+        string? dn = null;
+        // 显示名称为空时通过资源文件查找 FieldName 项
+        var localizer = modelType.Assembly.IsDynamic ? null : CreateLocalizerByType(modelType);
+        var stringLocalizer = localizer?[fieldName];
+        if (stringLocalizer is { ResourceNotFound: false })
         {
-            string? dn = null;
-            // 显示名称为空时通过资源文件查找 FieldName 项
-            var localizer = modelType.Assembly.IsDynamic ? null : CreateLocalizerByType(modelType);
-            var stringLocalizer = localizer?[fieldName];
-            if (stringLocalizer is { ResourceNotFound: false })
-            {
-                dn = stringLocalizer.Value;
-            }
-            else if (modelType.IsEnum)
-            {
-                var info = modelType.GetFieldByName(fieldName);
-                if (info != null)
-                {
-                    dn = FindDisplayAttribute(info);
-                }
-            }
-            else if (TryGetProperty(modelType, fieldName, out var propertyInfo))
-            {
-                dn = FindDisplayAttribute(propertyInfo);
-            }
-
-            entry.SetDynamicAssemblyPolicy(modelType);
-
-            return dn;
-        });
-
-        return displayName ?? fieldName;
-
-        string? FindDisplayAttribute(MemberInfo memberInfo)
-        {
-            // 回退查找 Display 标签
-            var dn = memberInfo.GetCustomAttribute<DisplayAttribute>(true)?.Name
-                ?? memberInfo.GetCustomAttribute<DisplayNameAttribute>(true)?.DisplayName
-                ?? memberInfo.GetCustomAttribute<DescriptionAttribute>(true)?.Description;
-
-            // 回退查找资源文件通过 dn 查找匹配项 用于支持 Validation
-            if (!modelType.Assembly.IsDynamic && !string.IsNullOrEmpty(dn))
-            {
-                dn = GetLocalizerValueFromResourceManager(dn);
-            }
-            return dn;
+            dn = stringLocalizer.Value;
         }
+        else if (modelType.IsEnum)
+        {
+            var info = modelType.GetFieldByName(fieldName);
+            if (info != null)
+            {
+                dn = FindDisplayAttribute(modelType, info);
+            }
+        }
+        else if (TryGetProperty(modelType, fieldName, out var propertyInfo))
+        {
+            dn = FindDisplayAttribute(modelType, propertyInfo);
+        }
+        return dn ?? fieldName;
+    }
+
+    private static string? FindDisplayAttribute(Type modelType, MemberInfo memberInfo)
+    {
+        // 回退查找 Display 标签
+        var dn = memberInfo.GetCustomAttribute<DisplayAttribute>(true)?.Name
+            ?? memberInfo.GetCustomAttribute<DisplayNameAttribute>(true)?.DisplayName
+            ?? memberInfo.GetCustomAttribute<DescriptionAttribute>(true)?.Description;
+
+        // 回退查找资源文件通过 dn 查找匹配项 用于支持 Validation
+        if (!modelType.Assembly.IsDynamic && !string.IsNullOrEmpty(dn))
+        {
+            dn = GetLocalizerValueFromResourceManager(dn);
+        }
+        return dn;
     }
 
     public static List<SelectedItem> GetNullableBoolItems(Type modelType, string fieldName)
     {
-        var cacheKey = $"{nameof(GetNullableBoolItems)}-{CultureInfo.CurrentUICulture.Name}-{modelType.FullName}-{fieldName}";
+        var cacheKey = $"{CacheKeyPrefix}-{nameof(GetNullableBoolItems)}-{modelType.GetUniqueTypeName()}-{fieldName}-{CultureInfo.CurrentUICulture.Name}";
         return Instance.GetOrCreate(cacheKey, entry =>
         {
             var items = new List<SelectedItem>();
@@ -383,108 +474,93 @@ internal class CacheManager : ICacheManager
     #region Placeholder
     public static string? GetPlaceholder(Type modelType, string fieldName)
     {
-        var cacheKey = $"{nameof(GetPlaceholder)}-{CultureInfo.CurrentUICulture.Name}-{modelType.FullName}-{fieldName}";
-        return Instance.GetOrCreate(cacheKey, entry =>
+        // 通过资源文件查找 FieldName 项
+        string? ret = null;
+        var localizer = CreateLocalizerByType(modelType);
+        if (localizer != null)
         {
-            // 通过资源文件查找 FieldName 项
-            string? ret = null;
-            var localizer = CreateLocalizerByType(modelType);
-            if (localizer != null)
+            var stringLocalizer = localizer[$"{fieldName}.PlaceHolder"];
+            if (!stringLocalizer.ResourceNotFound)
             {
-                var stringLocalizer = localizer[$"{fieldName}.PlaceHolder"];
-                if (!stringLocalizer.ResourceNotFound)
-                {
-                    ret = stringLocalizer.Value;
-                }
-                else if (TryGetProperty(modelType, fieldName, out var propertyInfo))
-                {
-                    var placeHolderAttribute = propertyInfo.GetCustomAttribute<PlaceHolderAttribute>(true);
-                    if (placeHolderAttribute != null)
-                    {
-                        ret = placeHolderAttribute.Text;
-                    }
-                }
-
-                entry.SetDynamicAssemblyPolicy(modelType);
+                ret = stringLocalizer.Value;
             }
-            return ret;
-        });
+            else if (TryGetProperty(modelType, fieldName, out var propertyInfo))
+            {
+                var placeHolderAttribute = propertyInfo.GetCustomAttribute<PlaceHolderAttribute>(true);
+                if (placeHolderAttribute != null)
+                {
+                    ret = placeHolderAttribute.Text;
+                }
+            }
+        }
+        return ret;
     }
     #endregion
 
     #region Lambda Property
     public static bool TryGetProperty(Type modelType, string fieldName, [NotNullWhen(true)] out PropertyInfo? propertyInfo)
     {
-        var cacheKey = $"{nameof(TryGetProperty)}-{modelType.FullName}-{fieldName}";
-        propertyInfo = Instance.GetOrCreate(cacheKey, entry =>
+        var props = modelType.GetRuntimeProperties();
+
+        // 支持 MetadataType
+        var metadataType = modelType.GetCustomAttribute<MetadataTypeAttribute>(false);
+        if (metadataType != null)
         {
-            var props = modelType.GetRuntimeProperties().AsEnumerable();
+            props = props.Concat(metadataType.MetadataClassType.GetRuntimeProperties());
+        }
 
-            // 支持 MetadataType
-            var metadataType = modelType.GetCustomAttribute<MetadataTypeAttribute>(false);
-            if (metadataType != null)
-            {
-                props = props.Concat(metadataType.MetadataClassType.GetRuntimeProperties());
-            }
-
-            var pi = props.FirstOrDefault(p => p.Name == fieldName);
-
-            entry.SetDynamicAssemblyPolicy(modelType);
-
-            return pi;
-        });
+        propertyInfo = props.FirstOrDefault(p => p.Name == fieldName);
         return propertyInfo != null;
     }
 
-    public static TResult GetPropertyValue<TModel, TResult>(TModel model, string fieldName)
+    public static TResult GetPropertyValue<TModel, TResult>(TModel model, string fieldName) => (model is IDynamicColumnsObject d)
+        ? (TResult)d.GetValue(fieldName)!
+        : GetValue<TModel, TResult>(model, fieldName);
+
+    private static TResult GetValue<TModel, TResult>(TModel model, string fieldName)
     {
         if (model == null)
         {
             throw new ArgumentNullException(nameof(model));
         }
 
-        return (model is IDynamicColumnsObject d)
-            ? (TResult)d.GetValue(fieldName)!
-            : GetValue();
-
-        TResult GetValue()
+        var type = model.GetType();
+        var cacheKey = $"{CacheKeyPrefix}-Lambda-Get-{type.GetUniqueTypeName()}-{typeof(TModel)}-{fieldName}-{typeof(TResult)}";
+        var invoker = Instance.GetOrCreate(cacheKey, entry =>
         {
-            var type = model.GetType();
-            var cacheKey = ($"Lambda-Get-{type.FullName}", typeof(TModel), fieldName, typeof(TResult));
-            var invoker = Instance.GetOrCreate(cacheKey, entry =>
+            if (type.Assembly.IsDynamic)
             {
-                entry.SetDynamicAssemblyPolicy(type);
-                return LambdaExtensions.GetPropertyValueLambda<TModel, TResult>(model, fieldName).Compile();
-            })!;
-            return invoker(model);
-        }
+                entry.SetAbsoluteExpiration(TimeSpan.FromSeconds(10));
+            }
+
+            return LambdaExtensions.GetPropertyValueLambda<TModel, TResult>(model, fieldName).Compile();
+        });
+        return invoker(model);
     }
 
     public static void SetPropertyValue<TModel, TValue>(TModel model, string fieldName, TValue value)
     {
-        if (model == null)
-        {
-            throw new ArgumentNullException(nameof(model));
-        }
-
         if (model is IDynamicColumnsObject d)
         {
             d.SetValue(fieldName, value);
         }
         else
         {
-            SetValue();
-        }
+            if (model == null)
+            {
+                throw new ArgumentNullException(nameof(model));
+            }
 
-        void SetValue()
-        {
             var type = model.GetType();
-            var cacheKey = ($"Lambda-Set-{type.FullName}", typeof(TModel), fieldName, typeof(TValue));
+            var cacheKey = $"{CacheKeyPrefix}-Lambda-Set-{type.GetUniqueTypeName()}-{typeof(TModel)}-{fieldName}-{typeof(TValue)}";
             var invoker = Instance.GetOrCreate(cacheKey, entry =>
             {
-                entry.SetDynamicAssemblyPolicy(type);
+                if (type.Assembly.IsDynamic)
+                {
+                    entry.SetAbsoluteExpiration(TimeSpan.FromSeconds(10));
+                }
                 return LambdaExtensions.SetPropertyValueLambda<TModel, TValue>(model, fieldName).Compile();
-            })!;
+            });
             invoker(model, value);
         }
     }
@@ -503,13 +579,8 @@ internal class CacheManager : ICacheManager
         if (model != null)
         {
             var type = model.GetType();
-            var cacheKey = ($"Lambda-GetKeyValue-{type.FullName}-{customAttribute?.FullName}", typeof(TModel));
-            var invoker = Instance.GetOrCreate(cacheKey, entry =>
-            {
-                entry.SetDynamicAssemblyPolicy(type);
-
-                return LambdaExtensions.GetKeyValue<TModel, TValue>(customAttribute).Compile();
-            })!;
+            var cacheKey = $"{CacheKeyPrefix}-Lambda-{nameof(GetKeyValue)}-{type.GetUniqueTypeName()}-{typeof(TModel)}-{customAttribute?.GetUniqueTypeName()}";
+            var invoker = Instance.GetOrCreate(cacheKey, entry => LambdaExtensions.GetKeyValue<TModel, TValue>(customAttribute).Compile());
             ret = invoker(model);
         }
         return ret;
@@ -519,29 +590,21 @@ internal class CacheManager : ICacheManager
     #region Lambda Sort
     public static Func<IEnumerable<T>, string, SortOrder, IEnumerable<T>> GetSortFunc<T>()
     {
-        var cacheKey = $"Lambda-{nameof(LambdaExtensions.GetSortLambda)}-{typeof(T).FullName}";
-        return Instance.GetOrCreate(cacheKey, entry =>
-        {
-            entry.SetDynamicAssemblyPolicy(typeof(T));
-            return LambdaExtensions.GetSortLambda<T>().Compile();
-        })!;
+        var cacheKey = $"{CacheKeyPrefix}-Lambda-{nameof(GetSortFunc)}-{typeof(T).GetUniqueTypeName()}";
+        return Instance.GetOrCreate(cacheKey, entry => LambdaExtensions.GetSortLambda<T>().Compile());
     }
 
     public static Func<IEnumerable<T>, List<string>, IEnumerable<T>> GetSortListFunc<T>()
     {
-        var cacheKey = $"Lambda-{nameof(LambdaExtensions.GetSortListLambda)}-{typeof(T).FullName}";
-        return Instance.GetOrCreate(cacheKey, entry =>
-        {
-            entry.SetDynamicAssemblyPolicy(typeof(T));
-            return LambdaExtensions.GetSortListLambda<T>().Compile();
-        })!;
+        var cacheKey = $"{CacheKeyPrefix}-Lambda-{nameof(GetSortListFunc)}-{typeof(T).GetUniqueTypeName()}";
+        return Instance.GetOrCreate(cacheKey, entry => LambdaExtensions.GetSortListLambda<T>().Compile());
     }
     #endregion
 
     #region Lambda ConvertTo
     public static Func<object, IEnumerable<string?>> CreateConverterInvoker(Type type)
     {
-        var cacheKey = $"Lambda-{nameof(CreateConverterInvoker)}-{type.FullName}";
+        var cacheKey = $"{CacheKeyPrefix}-Lambda-{nameof(CreateConverterInvoker)}-{type.GetUniqueTypeName()}";
         return Instance.GetOrCreate(cacheKey, entry =>
         {
             var method = typeof(CacheManager)
@@ -551,10 +614,8 @@ internal class CacheManager : ICacheManager
             var para_exp = Expression.Parameter(typeof(object));
             var convert = Expression.Convert(para_exp, typeof(List<>).MakeGenericType(type));
             var body = Expression.Call(method, convert);
-
-            entry.SetDynamicAssemblyPolicy(type);
             return Expression.Lambda<Func<object, IEnumerable<string?>>>(body, para_exp).Compile();
-        })!;
+        });
     }
 
     private static IEnumerable<string?> ConvertToString<TSource>(List<TSource> source) => source is List<SelectedItem> list
@@ -571,24 +632,16 @@ internal class CacheManager : ICacheManager
     /// <returns></returns>
     public static Func<TModel, ITableColumn, Func<TModel, ITableColumn, object?, Task>, object> GetOnValueChangedInvoke<TModel>(Type fieldType)
     {
-        var cacheKey = $"Lambda-{nameof(GetOnValueChangedInvoke)}-{typeof(TModel).FullName}-{fieldType.FullName}";
-        return Instance.GetOrCreate(cacheKey, entry =>
-        {
-            entry.SetDynamicAssemblyPolicy(fieldType);
-            return Utility.CreateOnValueChanged<TModel>(fieldType).Compile();
-        })!;
+        var cacheKey = $"{CacheKeyPrefix}-Lambda-{nameof(GetOnValueChangedInvoke)}-{typeof(TModel).GetUniqueTypeName()}-{fieldType.GetUniqueTypeName()}";
+        return Instance.GetOrCreate(cacheKey, entry => Utility.CreateOnValueChanged<TModel>(fieldType).Compile());
     }
     #endregion
 
     #region Format
     public static Func<object, string, IFormatProvider?, string> GetFormatInvoker(Type type)
     {
-        var cacheKey = $"{nameof(GetFormatInvoker)}-{nameof(GetFormatLambda)}-{type.FullName}";
-        return Instance.GetOrCreate(cacheKey, entry =>
-        {
-            entry.SetDynamicAssemblyPolicy(type);
-            return GetFormatLambda(type).Compile();
-        })!;
+        var cacheKey = $"{CacheKeyPrefix}-Lambda-{nameof(GetFormatInvoker)}-{type.GetUniqueTypeName()}";
+        return Instance.GetOrCreate(cacheKey, entry => GetFormatLambda(type).Compile());
 
         static Expression<Func<object, string, IFormatProvider?, string>> GetFormatLambda(Type type)
         {
@@ -599,7 +652,7 @@ internal class CacheManager : ICacheManager
             if (type.IsAssignableTo(typeof(IFormattable)))
             {
                 // 通过 IFormattable 接口格式化
-                var mi = type.GetMethod("ToString", new Type[] { typeof(string), typeof(IFormatProvider) });
+                var mi = type.GetMethod("ToString", [typeof(string), typeof(IFormatProvider)]);
                 if (mi != null)
                 {
                     body = Expression.Call(Expression.Convert(exp_p1, type), mi, exp_p2, exp_p3);
@@ -608,7 +661,7 @@ internal class CacheManager : ICacheManager
             else
             {
                 // 通过 ToString() 方法格式化
-                var mi = type.GetMethod("ToString", Array.Empty<Type>());
+                var mi = type.GetMethod("ToString", []);
                 if (mi != null)
                 {
                     body = Expression.Call(Expression.Convert(exp_p1, type), mi);
@@ -625,12 +678,8 @@ internal class CacheManager : ICacheManager
 
     public static Func<object, IFormatProvider?, string> GetFormatProviderInvoker(Type type)
     {
-        var cacheKey = $"{nameof(GetFormatProviderInvoker)}-{nameof(GetFormatProviderLambda)}-{type.FullName}";
-        return Instance.GetOrCreate(cacheKey, entry =>
-        {
-            entry.SetDynamicAssemblyPolicy(type);
-            return GetFormatProviderLambda(type).Compile();
-        })!;
+        var cacheKey = $"{CacheKeyPrefix}-Lambda-{nameof(GetFormatProviderInvoker)}-{type.GetUniqueTypeName()}";
+        return Instance.GetOrCreate(cacheKey, entry => GetFormatProviderLambda(type).Compile());
 
         static Expression<Func<object, IFormatProvider?, string>> GetFormatProviderLambda(Type type)
         {
@@ -638,7 +687,7 @@ internal class CacheManager : ICacheManager
             var exp_p2 = Expression.Parameter(typeof(IFormatProvider));
             Expression? body;
 
-            var mi = type.GetMethod("ToString", new Type[] { typeof(IFormatProvider) });
+            var mi = type.GetMethod("ToString", [typeof(IFormatProvider)]);
             if (mi != null)
             {
                 // 通过 ToString(IFormatProvider? provider) 接口格式化
@@ -653,5 +702,22 @@ internal class CacheManager : ICacheManager
             return Expression.Lambda<Func<object, IFormatProvider?, string>>(body, exp_p1, exp_p2);
         }
     }
+
+    public static object GetFormatterInvoker(Type type, Func<object, Task<string?>> formatter)
+    {
+        var cacheKey = $"{CacheKeyPrefix}-Lambda-{nameof(GetFormatterInvoker)}-{type.GetUniqueTypeName()}";
+        var invoker = Instance.GetOrCreate(cacheKey, entry => GetFormatterInvokerLambda(type).Compile());
+        return invoker(formatter);
+
+        static Expression<Func<Func<object, Task<string?>>, object>> GetFormatterInvokerLambda(Type type)
+        {
+            var method = typeof(CacheManager).GetMethod(nameof(InvokeFormatterAsync), BindingFlags.Static | BindingFlags.NonPublic)!.MakeGenericMethod(type);
+            var exp_p1 = Expression.Parameter(typeof(Func<object?, Task<string?>>));
+            var body = Expression.Call(null, method, exp_p1);
+            return Expression.Lambda<Func<Func<object, Task<string?>>, object>>(body, exp_p1);
+        }
+    }
+
+    private static Func<TType, Task<string?>> InvokeFormatterAsync<TType>(Func<object?, Task<string?>> formatter) => new(v => formatter(v));
     #endregion
 }

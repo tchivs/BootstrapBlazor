@@ -1,18 +1,19 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using AngleSharp.Dom;
-using BootstrapBlazor.Shared;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Localization;
+using System.Reflection;
 
 namespace UnitTest.Components;
 
 public class TableDialogTest : TableDialogTestBase
 {
     [Fact]
-    public void EditAsync_Ok()
+    public async Task EditAsync_Ok()
     {
         var localizer = Context.Services.GetRequiredService<IStringLocalizer<Foo>>();
         var items = Foo.GenerateFoo(localizer, 2);
@@ -27,7 +28,9 @@ public class TableDialogTest : TableDialogTestBase
                 pb.Add(a => a.EditDialogFullScreenSize, FullScreenSize.None);
                 pb.Add(a => a.EditDialogSize, Size.Large);
                 pb.Add(a => a.EditDialogSaveButtonText, "test-save");
+                pb.Add(a => a.EditDialogSaveButtonIcon, "icon-test-save");
                 pb.Add(a => a.EditDialogCloseButtonText, "test-close");
+                pb.Add(a => a.EditDialogCloseButtonIcon, "icon-test-close");
                 pb.Add(a => a.EditDialogItemsPerRow, 2);
                 pb.Add(a => a.EditDialogRowType, RowType.Inline);
                 pb.Add(a => a.EditDialogLabelAlign, Alignment.Center);
@@ -39,6 +42,19 @@ public class TableDialogTest : TableDialogTestBase
                     builder.AddAttribute(1, "Field", "Name");
                     builder.AddAttribute(2, "FieldExpression", Utility.GenerateValueExpression(foo, "Name", typeof(string)));
                     builder.CloseComponent();
+
+                    builder.OpenComponent<TableColumn<Foo, string>>(0);
+                    builder.AddAttribute(1, "Field", "Address");
+                    builder.AddAttribute(2, "FieldExpression", Utility.GenerateValueExpression(foo, "Address", typeof(string)));
+                    builder.AddAttribute(3, "Ignore", true);
+                    builder.CloseComponent();
+
+                    builder.OpenComponent<TableTemplateColumn<Foo>>(10);
+                    builder.AddAttribute(11, "Template", new RenderFragment<TableColumnContext<Foo, object?>>(context => builder =>
+                    {
+                        builder.AddContent(0, $"template-{context.Row.Name}");
+                    }));
+                    builder.CloseComponent();
                 });
                 pb.Add(a => a.OnSaveAsync, (foo, itemType) => Task.FromResult(true));
             });
@@ -46,9 +62,9 @@ public class TableDialogTest : TableDialogTestBase
 
         var table = cut.FindComponent<Table<Foo>>();
         // 选一个
-        var input = cut.Find("tbody tr input");
-        cut.InvokeAsync(() => input.Click());
-        cut.InvokeAsync(() => table.Instance.EditAsync());
+        var checkbox = cut.FindComponents<Checkbox<Foo>>()[1];
+        await cut.InvokeAsync(checkbox.Instance.OnToggleClick);
+        await cut.InvokeAsync(() => table.Instance.EditAsync());
 
         cut.Contains("test-save");
         cut.Contains("test-close");
@@ -59,34 +75,35 @@ public class TableDialogTest : TableDialogTestBase
 
         // 编辑弹窗逻辑
         var form = cut.Find(".modal-body form");
-        cut.InvokeAsync(() => form.Submit());
+        await cut.InvokeAsync(() => form.Submit());
         var modal = cut.FindComponent<Modal>();
-        cut.InvokeAsync(() => modal.Instance.CloseCallback());
+        await cut.InvokeAsync(() => modal.Instance.CloseCallback());
 
         // 内置数据服务取消回调
-        cut.InvokeAsync(() => table.Instance.EditAsync());
-        cut.InvokeAsync(() => modal.Instance.CloseCallback());
+        await cut.InvokeAsync(() => table.Instance.EditAsync());
+        await cut.InvokeAsync(() => modal.Instance.CloseCallback());
 
         // 自定义数据服务取消回调测试
         table.SetParametersAndRender(pb =>
         {
             pb.Add(a => a.DataService, new MockEFCoreDataService(localizer));
+            pb.Add(a => a.BeforeShowEditDialogCallback, new Action<ITableEditDialogOption<Foo>>(o => o.DisableAutoSubmitFormByEnter = true));
         });
-        cut.InvokeAsync(() => table.Instance.EditAsync());
-        cut.InvokeAsync(() => modal.Instance.CloseCallback());
+        await cut.InvokeAsync(() => table.Instance.EditAsync());
+        await cut.InvokeAsync(() => modal.Instance.CloseCallback());
 
         // Add 弹窗
-        cut.InvokeAsync(() => table.Instance.AddAsync());
-        cut.InvokeAsync(() => modal.Instance.CloseCallback());
+        await cut.InvokeAsync(() => table.Instance.AddAsync());
+        await cut.InvokeAsync(() => modal.Instance.CloseCallback());
 
         // 自定义数据服务取消回调测试
         table.SetParametersAndRender(pb =>
         {
             pb.Add(a => a.EditDialogFullScreenSize, FullScreenSize.Always);
         });
-        cut.InvokeAsync(() => table.Instance.AddAsync());
+        await cut.InvokeAsync(() => table.Instance.AddAsync());
         Assert.Contains(" modal-fullscreen ", cut.Markup);
-        cut.InvokeAsync(() => modal.Instance.CloseCallback());
+        await cut.InvokeAsync(() => modal.Instance.CloseCallback());
 
         var closed = false;
         // 测试 CloseCallback
@@ -98,8 +115,8 @@ public class TableDialogTest : TableDialogTestBase
                 return Task.CompletedTask;
             });
         });
-        cut.InvokeAsync(() => table.Instance.AddAsync());
-        cut.InvokeAsync(() => modal.Instance.CloseCallback());
+        await cut.InvokeAsync(() => table.Instance.AddAsync());
+        await cut.InvokeAsync(() => modal.Instance.CloseCallback());
         Assert.True(closed);
 
         // IsTracking mode
@@ -108,15 +125,15 @@ public class TableDialogTest : TableDialogTestBase
             pb.Add(a => a.IsTracking, true);
         });
         // Add 弹窗
-        cut.InvokeAsync(() => table.Instance.AddAsync());
+        await cut.InvokeAsync(() => table.Instance.AddAsync());
 
         // 编辑弹窗逻辑
-        input = cut.Find(".modal-body form input.form-control");
-        cut.InvokeAsync(() => input.Change("Test_Name"));
+        var input = cut.Find(".modal-body form input.form-control");
+        await cut.InvokeAsync(() => input.Change("Test_Name"));
 
         form = cut.Find(".modal-body form");
-        cut.InvokeAsync(() => form.Submit());
-        cut.InvokeAsync(() => modal.Instance.CloseCallback());
+        await cut.InvokeAsync(() => form.Submit());
+        await cut.InvokeAsync(() => modal.Instance.CloseCallback());
 
         var itemsChanged = false;
         // 更新插入模式
@@ -131,16 +148,16 @@ public class TableDialogTest : TableDialogTestBase
         });
 
         // Add 弹窗
-        cut.InvokeAsync(() => table.Instance.AddAsync());
+        await cut.InvokeAsync(() => table.Instance.AddAsync());
         cut.Contains("test_edit_footer");
 
         // 编辑弹窗逻辑
         input = cut.Find(".modal-body form input.form-control");
-        cut.InvokeAsync(() => input.Change("Test_Name"));
+        await cut.InvokeAsync(() => input.Change("Test_Name"));
 
         form = cut.Find(".modal-body form");
-        cut.InvokeAsync(() => form.Submit());
-        cut.InvokeAsync(() => modal.Instance.CloseCallback());
+        await cut.InvokeAsync(() => form.Submit());
+        await cut.InvokeAsync(() => modal.Instance.CloseCallback());
         Assert.True(itemsChanged);
 
         // 设置双向绑定 Items 后再测试 Add Save
@@ -151,27 +168,28 @@ public class TableDialogTest : TableDialogTestBase
             pb.Add(a => a.ItemsChanged, EventCallback.Factory.Create<IEnumerable<Foo>>(this, rows => items = rows.ToList()));
         });
         // Add 弹窗
-        cut.InvokeAsync(() => table.Instance.AddAsync());
+        await cut.InvokeAsync(() => table.Instance.AddAsync());
         input = cut.Find(".modal-body form input.form-control");
-        cut.InvokeAsync(() => input.Change("Test_Name"));
+        await cut.InvokeAsync(() => input.Change("Test_Name"));
 
         form = cut.Find(".modal-body form");
-        cut.InvokeAsync(() => form.Submit());
-        cut.InvokeAsync(() => modal.Instance.CloseCallback());
+        await cut.InvokeAsync(() => form.Submit());
+        await cut.InvokeAsync(() => modal.Instance.CloseCallback());
         Assert.Equal(3, items.Count);
 
         table.SetParametersAndRender(pb =>
         {
             pb.Add(a => a.InsertRowMode, InsertRowMode.Last);
         });
+
         // Add 弹窗
-        cut.InvokeAsync(() => table.Instance.AddAsync());
+        await cut.InvokeAsync(() => table.Instance.AddAsync());
         input = cut.Find(".modal-body form input.form-control");
-        cut.InvokeAsync(() => input.Change("Test_Name"));
+        await cut.InvokeAsync(() => input.Change("Test_Name"));
 
         form = cut.Find(".modal-body form");
-        cut.InvokeAsync(() => form.Submit());
-        cut.InvokeAsync(() => modal.Instance.CloseCallback());
+        await cut.InvokeAsync(() => form.Submit());
+        await cut.InvokeAsync(() => modal.Instance.CloseCallback());
         Assert.Equal(3, items.Count);
 
         // 数据源是 OnQueryAsync 提供
@@ -190,48 +208,187 @@ public class TableDialogTest : TableDialogTestBase
         });
 
         // Add 弹窗
-        cut.InvokeAsync(() => table.Instance.AddAsync());
+        await cut.InvokeAsync(() => table.Instance.AddAsync());
         input = cut.Find(".modal-body form input.form-control");
-        cut.InvokeAsync(() => input.Change("Test_Name"));
+        await cut.InvokeAsync(() => input.Change("Test_Name"));
 
         form = cut.Find(".modal-body form");
-        cut.InvokeAsync(() => form.Submit());
-        cut.InvokeAsync(() => modal.Instance.CloseCallback());
+        await cut.InvokeAsync(() => form.Submit());
+        await cut.InvokeAsync(() => modal.Instance.CloseCallback());
 
         // 数据为三行
         var rows = cut.FindAll("tbody tr");
         Assert.Equal(3, rows.Count);
-    }
 
-    private class MockEFCoreDataService : IDataService<Foo>, IEntityFrameworkCoreDataService
-    {
-        IStringLocalizer<Foo> Localizer { get; set; }
-
-        public MockEFCoreDataService(IStringLocalizer<Foo> localizer) => Localizer = localizer;
-
-        public Task<bool> AddAsync(Foo model) => Task.FromResult(true);
-
-        public Task<bool> DeleteAsync(IEnumerable<Foo> models) => Task.FromResult(true);
-
-        public Task<QueryData<Foo>> QueryAsync(QueryPageOptions option)
+        table.SetParametersAndRender(pb =>
         {
-            var foos = Foo.GenerateFoo(Localizer, 2);
-            var ret = new QueryData<Foo>()
+            pb.Add(a => a.IsExcel, false);
+            pb.Add(a => a.ShowToolbar, true);
+            pb.Add(a => a.ShowSearch, true);
+            pb.Add(a => a.ShowSearchText, false);
+            pb.Add(a => a.SearchDialogSize, Size.ExtraExtraLarge);
+            pb.Add(a => a.SearchDialogIsDraggable, true);
+            pb.Add(a => a.ScrollingDialogContent, true);
+            pb.Add(a => a.SearchDialogShowMaximizeButton, true);
+            pb.Add(a => a.SearchDialogItemsPerRow, 2);
+            pb.Add(a => a.SearchDialogRowType, RowType.Inline);
+            pb.Add(a => a.SearchDialogLabelAlign, Alignment.Right);
+            pb.Add(a => a.ShowAdvancedSearch, true);
+            pb.Add(a => a.RenderMode, TableRenderMode.Table);
+            pb.Add(a => a.ShowUnsetGroupItemsOnTop, true);
+            pb.Add(a => a.TableColumns, foo => builder =>
             {
-                Items = foos,
-                TotalCount = 2,
-                IsAdvanceSearch = true,
-                IsFiltered = true,
-                IsSearch = true,
-                IsSorted = true
-            };
-            return Task.FromResult(ret);
-        }
+                builder.OpenComponent<TableColumn<Foo, string>>(0);
+                builder.AddAttribute(1, "Field", "Name");
+                builder.AddAttribute(2, "FieldExpression", Utility.GenerateValueExpression(foo, "Name", typeof(string)));
+                builder.AddAttribute(3, "Searchable", true);
+                builder.CloseComponent();
+            });
+        });
 
-        public Task<bool> SaveAsync(Foo model, ItemChangedType changedType) => Task.FromResult(true);
+        var searchButton = cut.Find(".fa-magnifying-glass-plus");
+        await cut.InvokeAsync(() => searchButton.Click());
 
-        public Task CancelAsync() => Task.CompletedTask;
+        cut.WaitForAssertion(() => cut.Find(".fa-magnifying-glass"));
+        var queryButton = cut.Find(".fa-magnifying-glass");
+        await cut.InvokeAsync(() => queryButton.Click());
 
-        public Task EditAsync(object model) => Task.CompletedTask;
+        table.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.GetAdvancedSearchFilterCallback, new Func<PropertyInfo, Foo, List<SearchFilterAction>?>((p, model) =>
+            {
+                return null;
+            }));
+        });
+
+        searchButton = cut.Find(".fa-magnifying-glass-plus");
+        await cut.InvokeAsync(() => searchButton.Click());
+
+        cut.WaitForAssertion(() => cut.Find(".fa-magnifying-glass"));
+        queryButton = cut.Find(".fa-magnifying-glass");
+        await cut.InvokeAsync(() => queryButton.Click());
+
+        table = cut.FindComponent<Table<Foo>>();
+        table.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.GetAdvancedSearchFilterCallback, new Func<PropertyInfo, Foo, List<SearchFilterAction>?>((p, model) =>
+            {
+                var v = p.GetValue(model);
+                return
+                [
+                    new SearchFilterAction(p.Name, v, FilterAction.Equal)
+                ];
+            }));
+        });
+
+        searchButton = cut.Find(".fa-magnifying-glass-plus");
+        await cut.InvokeAsync(() => searchButton.Click());
+
+        cut.WaitForAssertion(() => cut.Find(".fa-magnifying-glass"));
+        queryButton = cut.Find(".fa-magnifying-glass");
+        await cut.InvokeAsync(() => queryButton.Click());
     }
+
+    [Fact]
+    public async Task EditDialog_Ok()
+    {
+        var localizer = Context.Services.GetRequiredService<IStringLocalizer<Foo>>();
+        var dialogService = Context.Services.GetRequiredService<DialogService>();
+        var items = Foo.GenerateFoo(localizer, 2);
+        Dialog dialog = default!;
+        var cut = Context.RenderComponent<BootstrapBlazorRoot>(pb =>
+        {
+            pb.AddChildContent(builder =>
+            {
+                builder.OpenComponent<Dialog>(0);
+                builder.AddComponentReferenceCapture(1, obj => dialog = (Dialog)obj);
+                builder.CloseComponent();
+
+                builder.OpenComponent<Button>(2);
+                builder.AddAttribute(3, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, e => ShowDialog(dialogService, items, dialog)));
+                builder.CloseComponent();
+            });
+        });
+
+        // 点击按钮弹出 Dialog
+        var button = cut.FindComponent<Button>();
+        await cut.InvokeAsync(button.Instance.OnClick.InvokeAsync);
+
+        // 点击表格新建按钮
+        var table = cut.FindComponent<Table<Foo>>();
+        var add = cut.Find(".table-toolbar button");
+        await cut.InvokeAsync(() => add.Click());
+
+        // 检查 dialog 是否显示
+        var editDialog = cut.FindComponents<Dialog>().FirstOrDefault(i => i.Instance == dialog);
+        Assert.NotNull(editDialog);
+        Assert.Contains("新建窗口", editDialog.Markup);
+    }
+
+    [Fact]
+    public async Task Required_Ok()
+    {
+        var localizer = Context.Services.GetRequiredService<IStringLocalizer<Foo>>();
+        var items = Foo.GenerateFoo(localizer, 2);
+        var cut = Context.RenderComponent<BootstrapBlazorRoot>(pb =>
+        {
+            pb.AddChildContent<Table<Foo>>(pb =>
+            {
+                pb.Add(a => a.RenderMode, TableRenderMode.Table);
+                pb.Add(a => a.Items, items);
+                pb.Add(a => a.IsMultipleSelect, true);
+                pb.Add(a => a.ShowToolbar, true);
+                pb.Add(a => a.TableColumns, foo => builder =>
+                {
+                    builder.OpenComponent<TableColumn<Foo, string>>(0);
+                    builder.AddAttribute(1, "Field", "Name");
+                    builder.AddAttribute(2, "FieldExpression", Utility.GenerateValueExpression(foo, "Name", typeof(string)));
+                    builder.AddAttribute(3, "Required", true);
+                    builder.CloseComponent();
+
+                    builder.OpenComponent<TableColumn<Foo, string>>(0);
+                    builder.AddAttribute(1, "Field", "Address");
+                    builder.AddAttribute(2, "FieldExpression", Utility.GenerateValueExpression(foo, "Address", typeof(string)));
+                    builder.AddAttribute(3, "IsRequiredWhenAdd", true);
+                    builder.AddAttribute(4, "IsRequiredWhenEdit", true);
+                    builder.AddAttribute(4, "RequiredErrorMessage", "test error message");
+                    builder.CloseComponent();
+                });
+                pb.Add(a => a.OnSaveAsync, (foo, itemType) => Task.FromResult(true));
+            });
+        });
+
+        var table = cut.FindComponent<Table<Foo>>();
+        var modal = cut.FindComponent<Modal>();
+
+        // 选一个
+        var item = cut.FindComponent<Checkbox<Foo>>();
+        await cut.InvokeAsync(item.Instance.OnToggleClick);
+        await cut.InvokeAsync(() => table.Instance.AddAsync());
+
+        var form = cut.Find(".modal-body form");
+        await cut.InvokeAsync(() => form.Submit());
+        await cut.InvokeAsync(() => modal.Instance.CloseCallback());
+    }
+
+    private static Task ShowDialog(DialogService dialogService, List<Foo> items, Dialog dialog) => dialogService.Show(new DialogOption()
+    {
+        Title = "test-dialog-table",
+        Component = BootstrapDynamicComponent.CreateComponent<Table<Foo>>(new Dictionary<string, object?>()
+            {
+                {"RenderMode",  TableRenderMode.Table},
+                {"Items", items},
+                {"EditDialog", dialog},
+                {"IsMultipleSelect", true},
+                {"ShowToolbar", true },
+                {"TableColumns", new RenderFragment<Foo>(foo => builder =>
+                    {
+                        builder.OpenComponent<TableColumn<Foo, string>>(0);
+                        builder.AddAttribute(1, "Field", "Name");
+                        builder.AddAttribute(2, "FieldExpression", Utility.GenerateValueExpression(foo, "Name", typeof(string)));
+                        builder.CloseComponent();
+                    })
+                }
+            })
+    });
 }

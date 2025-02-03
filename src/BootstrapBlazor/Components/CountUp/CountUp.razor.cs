@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -17,6 +18,12 @@ public partial class CountUp<TValue>
     public TValue? Value { get; set; }
 
     /// <summary>
+    /// 获得/设置 计数配置项 默认 null
+    /// </summary>
+    [Parameter]
+    public CountUpOption? Option { get; set; }
+
+    /// <summary>
     /// 获得/设置 计数结束回调方法 默认 null
     /// </summary>
     [Parameter]
@@ -24,6 +31,10 @@ public partial class CountUp<TValue>
 
     [NotNull]
     private TValue? PreviousValue { get; set; }
+
+    private string? ClassString => CssBuilder.Default()
+        .AddClassFromAttributes(AdditionalAttributes)
+        .Build();
 
     /// <summary>
     /// <inheritdoc/>
@@ -47,13 +58,11 @@ public partial class CountUp<TValue>
     {
         await base.OnAfterRenderAsync(firstRender);
 
-        if (firstRender)
+        if (!firstRender && !PreviousValue.Equals(Value))
         {
             PreviousValue = Value;
-        }
-        else if (!PreviousValue.Equals(Value))
-        {
-            await Update(Value);
+
+            await InvokeInitAsync();
         }
     }
 
@@ -61,22 +70,7 @@ public partial class CountUp<TValue>
     /// <inheritdoc/>
     /// </summary>
     /// <returns></returns>
-    protected override Task InvokeInitAsync() => InvokeVoidAsync("init", Id, Interop, Value, OnCompleted != null ? nameof(OnCompleteCallback) : null);
-
-    /// <summary>
-    /// 更新数据方法
-    /// </summary>
-    /// <param name="value"></param>
-    /// <returns></returns>
-    private async ValueTask Update(TValue? value)
-    {
-        PreviousValue = value;
-
-        if (Module != null)
-        {
-            await Module.InvokeVoidAsync("update", Id, Value);
-        }
-    }
+    protected override Task InvokeInitAsync() => InvokeVoidAsync("init", Id, Interop, Value, OnCompleted != null ? nameof(OnCompleteCallback) : null, Option);
 
     /// <summary>
     /// OnCompleted 回调方法

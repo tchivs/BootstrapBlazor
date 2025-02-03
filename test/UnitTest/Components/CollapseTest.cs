@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 
@@ -87,7 +88,26 @@ public class CollapseTest : BootstrapBlazorTestBase
                 builder.CloseComponent();
             }));
         });
-        cut.Contains("btn-secondary");
+        cut.Contains("bg-secondary");
+    }
+
+    [Fact]
+    public void HeaderTemplate_Ok()
+    {
+        var cut = Context.RenderComponent<Collapse>(pb =>
+        {
+            pb.Add(a => a.CollapseItems, new RenderFragment(builder =>
+            {
+                builder.OpenComponent<CollapseItem>(0);
+                builder.AddAttribute(1, nameof(CollapseItem.Text), "Item 1");
+                builder.AddAttribute(2, nameof(CollapseItem.ChildContent), new RenderFragment(b => b.AddContent(0, "1")));
+                builder.AddAttribute(3, nameof(CollapseItem.HeaderTemplate), new RenderFragment(b => b.AddMarkupContent(0, "<div>Header-Template</div>")));
+                builder.AddAttribute(4, nameof(CollapseItem.HeaderClass), "header-class-test");
+                builder.CloseComponent();
+            }));
+        });
+        cut.Contains("header-class-test");
+        cut.Contains("<div>Header-Template</div>");
     }
 
     [Fact]

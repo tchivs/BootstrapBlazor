@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -12,7 +13,14 @@ public interface ITableSearchModel
     /// <summary>
     /// 获得 搜索集合
     /// </summary>
-    IEnumerable<IFilterAction> GetSearchs();
+    [Obsolete("This method is obsolete. Use GetSearches instead. 已过期，请使用 GetSearches 方法")]
+    [ExcludeFromCodeCoverage]
+    IEnumerable<IFilterAction> GetSearchs() => GetSearches();
+
+    /// <summary>
+    /// 获得 搜索集合
+    /// </summary>
+    IEnumerable<IFilterAction> GetSearches();
 
     /// <summary>
     /// 重置操作

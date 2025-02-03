@@ -1,20 +1,20 @@
 ﻿@namespace BootstrapBlazor.Components
 @inherits BootstrapModuleComponentBase
-@attribute [BootstrapModuleAutoLoader]
+@attribute [BootstrapModuleAutoLoader(JSObjectReference = true)]
 
-<div @attributes="@AdditionalAttributes" id="@Id" class="@ClassName" style="@StyleName" data-bs-ride="carousel" data-bs-touch="@DisableTouchSwipingString">
+<div @attributes="@AdditionalAttributes" id="@Id" class="@ClassName" style="@StyleName" data-bs-ride="@PlayMode.ToDescriptionString()" data-bs-touch="@DisableTouchSwipingString" data-bs-pause="@PauseString">
     <CascadingValue Value="this" IsFixed="true">
         @ChildContent
     </CascadingValue>
     <RenderTemplate>
         @if (ShowIndicators)
         {
-            <ol class="carousel-indicators">
+            <div class="carousel-indicators">
                 @for (var index = 0; index < Items.Count; index++)
                 {
-                    <li data-bs-slide-to="@index" class="@CheckActive(index)" data-bs-target="@TargetId"></li>
+                    <button data-bs-slide-to="@index" class="@CheckActive(index)" data-bs-target="@TargetId"></button>
                 }
-            </ol>
+            </div>
         }
         <div class="carousel-inner">
             @for (var index = 0; index < Items.Count; index++)

@@ -1,10 +1,9 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using BootstrapBlazor.Shared;
 using Microsoft.AspNetCore.Components.Web;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
 namespace UnitTest.Components;
@@ -35,6 +34,35 @@ public class ButtonTest : BootstrapBlazorTestBase
     }
 
     [Fact]
+    public void Popover_Ok()
+    {
+        var cut = Context.RenderComponent<Button>(pb =>
+        {
+            pb.AddChildContent<Popover>(pb =>
+            {
+                pb.Add(t => t.Title, "popover-title");
+            });
+        });
+        cut.Contains("data-bs-toggle=\"popover\" data-bs-original-title=\"popover-title\" data-bs-placement=\"top\" data-bs-custom-class=\"shadow\" data-bs-trigger=\"focus hover\"");
+
+        // 切换 Disabled 状态移除 Popover
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(b => b.IsDisabled, true);
+        });
+        var button = cut.Find("button");
+        var d = button.GetAttribute("disabled");
+        Assert.Equal("disabled", d);
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(b => b.IsDisabled, false);
+        });
+        button = cut.Find("button");
+        Assert.False(button.HasAttribute("disabled"));
+    }
+
+    [Fact]
     public void ButtonType_Ok()
     {
         var cut = Context.RenderComponent<Button>(pb =>
@@ -54,6 +82,23 @@ public class ButtonTest : BootstrapBlazorTestBase
             pb.Add(b => b.ButtonType, ButtonType.Reset);
         });
         Assert.Contains("type=\"reset\"", cut.Markup);
+    }
+
+    [Fact]
+    public void Text_Ok()
+    {
+        var cut = Context.RenderComponent<Button>(pb =>
+        {
+            pb.Add(b => b.Text, "Test");
+        });
+        Assert.Contains("<span>Test</span>", cut.Markup);
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.Text, null);
+            pb.AddChildContent("Button-Test");
+        });
+        Assert.Contains("Button-Test", cut.Markup);
     }
 
     [Theory]
@@ -81,6 +126,7 @@ public class ButtonTest : BootstrapBlazorTestBase
     {
         var cut = Context.RenderComponent<DialogCloseButton>();
         Assert.Contains("btn-secondary", cut.Markup);
+
         cut.SetParametersAndRender(pb =>
         {
             pb.Add(a => a.Color, Color.Danger);
@@ -171,23 +217,17 @@ public class ButtonTest : BootstrapBlazorTestBase
         Assert.True(cut.Instance.IsDisabled);
         await tcs.Task;
         Assert.True(clicked);
-    }
-
-    [Fact]
-    public void Text_Ok()
-    {
-        var cut = Context.RenderComponent<Button>(pb =>
-        {
-            pb.Add(b => b.Text, "Test");
-        });
-        Assert.Contains("<span>Test</span>", cut.Markup);
+        cut.WaitForState(() => cut.Instance.IsDisabled == false);
 
         cut.SetParametersAndRender(pb =>
         {
-            pb.Add(b => b.Text, null);
-            pb.AddChildContent("Button-Test");
+            pb.Add(b => b.IsAsync, true);
+            pb.Add(b => b.IsKeepDisabled, true);
         });
-        Assert.Contains("Button-Test", cut.Markup);
+        b.Click();
+        Assert.True(cut.Instance.IsDisabled);
+        await tcs.Task;
+        Assert.True(cut.Instance.IsDisabled);
     }
 
     [Fact]
@@ -233,6 +273,7 @@ public class ButtonTest : BootstrapBlazorTestBase
         {
             pb.Add(b => b.StopPropagation, true);
         });
+        cut.Contains("blazor:onclick:stopPropagation");
     }
 
     [Fact]
@@ -248,7 +289,7 @@ public class ButtonTest : BootstrapBlazorTestBase
     }
 
     [Fact]
-    public void Tooltip_Ok()
+    public async Task Tooltip_Ok()
     {
         var cut = Context.RenderComponent<Tooltip>(pb =>
         {
@@ -258,7 +299,7 @@ public class ButtonTest : BootstrapBlazorTestBase
         });
 
         var button = cut.FindComponent<Button>();
-        cut.InvokeAsync(() => button.Instance.ShowTooltip());
+        await cut.InvokeAsync(() => button.Instance.ShowTooltip());
 
         button.SetParametersAndRender(pb =>
         {
@@ -270,30 +311,7 @@ public class ButtonTest : BootstrapBlazorTestBase
         {
             pb.Add(a => a.TooltipText, "tooltip");
         });
-        cut1.InvokeAsync(() => cut1.Instance.ShowTooltip());
-    }
-
-    [Fact]
-    public void Popover_Ok()
-    {
-        var cut = Context.RenderComponent<Button>(pb =>
-        {
-            pb.AddChildContent<Popover>(pb =>
-            {
-                pb.Add(t => t.Title, "popover-title");
-            });
-        });
-
-        // 切换 Disabled 状态移除 Popover
-        cut.SetParametersAndRender(pb =>
-        {
-            pb.Add(b => b.IsDisabled, true);
-        });
-
-        cut.SetParametersAndRender(pb =>
-        {
-            pb.Add(b => b.IsDisabled, false);
-        });
+        await cut1.InvokeAsync(() => cut1.Instance.ShowTooltip());
     }
 
     [Fact]
@@ -330,19 +348,27 @@ public class ButtonTest : BootstrapBlazorTestBase
     }
 
     [Fact]
-    public async Task ShowTooltip_Ok()
+    public void ShowTooltip_Ok()
     {
         var cut = Context.RenderComponent<Button>();
-        await cut.InvokeAsync(() => cut.Instance.ShowTooltip());
+        var handler = Context.JSInterop.SetupVoid("showTooltip", cut.Instance.Id, "Tooltip");
+        // 未调用
+        cut.InvokeAsync(() => cut.Instance.ShowTooltip());
+        handler.VerifyNotInvoke("showTooltip");
+
+        cut.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.TooltipText, "Tooltip");
+        });
+        // 调用
+        Assert.Equal("Tooltip", cut.Instance.TooltipText);
+        handler.VerifyInvoke("showTooltip");
     }
 
     [Fact]
     public void Trigger_Ok()
     {
-        var cut = Context.RenderComponent<Button>();
-        cut.DoesNotContain("data-bs-trigger");
-
-        cut.SetParametersAndRender(pb =>
+        var cut = Context.RenderComponent<Button>(pb =>
         {
             pb.Add(a => a.TooltipTrigger, "click");
         });
@@ -350,10 +376,11 @@ public class ButtonTest : BootstrapBlazorTestBase
     }
 
     [Fact]
-    public async Task RemoveTooltip_Ok()
+    public void RemoveTooltip_Ok()
     {
         var cut = Context.RenderComponent<Button>();
-        await cut.InvokeAsync(() => cut.Instance.RemoveTooltip());
+        cut.InvokeAsync(() => cut.Instance.RemoveTooltip());
+        Assert.Null(cut.Instance.TooltipText);
     }
 
     [Fact]
@@ -385,7 +412,44 @@ public class ButtonTest : BootstrapBlazorTestBase
     [Fact]
     public void DialogSaveButton_Ok()
     {
-        var cut = Context.RenderComponent<DialogSaveButton>();
+        var clicked = false;
+        var cut = Context.RenderComponent<DialogSaveButton>(pb =>
+        {
+            pb.AddCascadingValue<Func<Task>>(() =>
+            {
+                clicked = true;
+                return Task.FromResult(0);
+            });
+            pb.Add(a => a.OnSaveAsync, () => Task.FromResult(true));
+        });
         cut.Contains("button type=\"submit\"");
+        var button = cut.Find("button");
+        cut.InvokeAsync(() => button.Click());
+        Assert.True(clicked);
+
+        clicked = false;
+        cut.SetParametersAndRender(pb => pb.Add(a => a.OnSaveAsync, () => Task.FromResult(false)));
+        button = cut.Find("button");
+        cut.InvokeAsync(() => button.Click());
+        Assert.False(clicked);
+    }
+
+    [Fact]
+    public void ShareButton_Ok()
+    {
+        var cut = Context.RenderComponent<ShareButton>(pb =>
+        {
+            pb.Add(a => a.ShareContext, new ShareButtonContext() { Text = "test-share-text", Title = "test-share-title", Url = "www.blazor.zone" });
+        });
+
+        cut.InvokeAsync(() =>
+        {
+            var button = cut.Find("button");
+            button.Click();
+        });
+
+        Assert.Equal("test-share-text", cut.Instance.ShareContext?.Text);
+        Assert.Equal("test-share-title", cut.Instance.ShareContext?.Title);
+        Assert.Equal("www.blazor.zone", cut.Instance.ShareContext?.Url);
     }
 }

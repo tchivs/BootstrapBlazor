@@ -1,13 +1,14 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 
-public class TableConfirmTest : TableConfirmTestBase
+public class TableConfirmTest : BootstrapBlazorTestBase
 {
     [Fact]
-    public async Task TableCellPopconfirmButton_Ok()
+    public void TableCellPopConfirmButton_Ok()
     {
         var clicked = false;
         var trigger = false;
@@ -17,8 +18,8 @@ public class TableConfirmTest : TableConfirmTestBase
             {
                 pb.Add(a => a.ChildContent, builder =>
                 {
-                    builder.OpenComponent<TableCellPopconfirmButton>(0);
-                    builder.AddAttribute(1, nameof(TableCellPopconfirmButton.OnConfirm), () =>
+                    builder.OpenComponent<TableCellPopConfirmButton>(0);
+                    builder.AddAttribute(1, nameof(TableCellPopConfirmButton.OnConfirm), () =>
                     {
                         clicked = true;
                         return Task.CompletedTask;
@@ -37,17 +38,20 @@ public class TableConfirmTest : TableConfirmTestBase
         });
 
         var button = cut1.Find("div");
-        await cut1.InvokeAsync(() => button.Click());
+        cut1.InvokeAsync(() => button.Click());
+
         var buttonConfirm = cut1.Find(".popover-confirm-buttons .btn-primary");
-        await cut1.InvokeAsync(() => buttonConfirm.Click());
+        cut1.InvokeAsync(() => buttonConfirm.Click());
         Assert.True(trigger);
         Assert.True(clicked);
+        Context.DisposeComponents();
     }
 
     [Fact]
-    public void TableCellPopconfirmButton_Null()
+    public void TableCellPopConfirmButton_Null()
     {
-        var cut = Context.RenderComponent<TableCellPopconfirmButton>();
+        var cut = Context.RenderComponent<TableCellPopConfirmButton>();
         Assert.Equal("", cut.Markup);
+        Context.DisposeComponents();
     }
 }

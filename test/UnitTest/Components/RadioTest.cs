@@ -1,8 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
-
-using BootstrapBlazor.Shared;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 
@@ -17,7 +16,6 @@ public class RadioTest : BootstrapBlazorTestBase
             pb.Add(a => a.Value, v);
         });
         Assert.Contains("radio-list form-control", cut.Markup);
-        Assert.Contains("form-check is-label", cut.Markup);
         Assert.Contains("form-check-input", cut.Markup);
     }
 
@@ -228,14 +226,32 @@ public class RadioTest : BootstrapBlazorTestBase
             pb.Add(a => a.Items, typeof(EnumEducation).ToSelectList());
             pb.Add(a => a.Value, EnumEducation.Middle);
         });
-        cut.Contains("is-button");
-        cut.Contains("form-check is-label is-checked");
+        cut.Contains("radio-list btn-group");
 
         cut.SetParametersAndRender(pb =>
         {
             pb.Add(a => a.Color, Color.Danger);
         });
-        cut.Contains("form-check is-label is-checked bg-danger");
+        cut.Contains("btn active bg-danger");
+
+        cut.InvokeAsync(() =>
+        {
+            var btn = cut.Find(".btn");
+            btn.Click();
+            cut.Contains("btn active bg-danger");
+        });
+    }
+
+    [Fact]
+    public void ShowBorder_Ok()
+    {
+        var cut = Context.RenderComponent<RadioList<EnumEducation>>(pb =>
+        {
+            pb.Add(a => a.ShowBorder, false);
+            pb.Add(a => a.Items, typeof(EnumEducation).ToSelectList());
+            pb.Add(a => a.Value, EnumEducation.Middle);
+        });
+        cut.Contains("no-border");
     }
 
     private class RadioListGenericMock<T>

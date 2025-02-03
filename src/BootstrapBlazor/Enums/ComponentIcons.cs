@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -22,7 +23,7 @@ public enum ComponentIcons
     /// <summary>
     /// AvatarUpload 组件 DeleteIcon 属性图标
     /// </summary>
-    AvatarUploadDelteIcon,
+    AvatarUploadDeleteIcon,
 
     /// <summary>
     /// AvatarUpload 组件 LoadingIcon 属性图标
@@ -100,7 +101,7 @@ public enum ComponentIcons
     CameraPhotoIcon,
 
     /// <summary>
-    /// Collapse 组件 Icon 属性图标
+    /// Card 组件 CollapseIcon 属性图标
     /// </summary>
     CardCollapseIcon,
 
@@ -133,6 +134,16 @@ public enum ComponentIcons
     /// CardUpload 组件 ZoomIcon 图标
     /// </summary>
     CardUploadZoomIcon,
+
+    /// <summary>
+    /// Upload 组件 CancelIcon 图标
+    /// </summary>
+    UploadCancelIcon,
+
+    /// <summary>
+    /// Upload 组件 UploadIcon 图标
+    /// </summary>
+    DropUploadIcon,
 
     /// <summary>
     /// Cascader 组件 Icon 属性图标
@@ -205,17 +216,17 @@ public enum ComponentIcons
     DialogCloseButtonIcon,
 
     /// <summary>
-    /// Dialog 组件 CloseButtonIcon 属性图标
+    /// Dialog 组件 SaveButtonIcon 属性图标
     /// </summary>
     DialogSaveButtonIcon,
 
     /// <summary>
-    /// Dialog 组件 MaxminzeIcon 属性图标
+    /// Dialog 组件 MaximizeIcon 属性图标
     /// </summary>
-    DialogMaxminzeWindowIcon,
+    DialogMaximizeWindowIcon,
 
     /// <summary>
-    /// Dialog 组件 MaxminzeIcon 属性图标
+    /// Dialog 组件 MaximizeIcon 属性图标
     /// </summary>
     DialogRestoreWindowIcon,
 
@@ -425,6 +436,11 @@ public enum ComponentIcons
     RibbonTabArrowPinIcon,
 
     /// <summary>
+    /// MultiSelect 组件 DropdownIcon 图标
+    /// </summary>
+    MultiSelectDropdownIcon,
+
+    /// <summary>
     /// MultiSelect 组件 ClearIcon 图标
     /// </summary>
     MultiSelectClearIcon,
@@ -443,6 +459,11 @@ public enum ComponentIcons
     /// Step 组件 ErrorIcon 图标
     /// </summary>
     StepErrorIcon,
+
+    /// <summary>
+    /// Table 组件 ColumnToolboxIcon 属性图标
+    /// </summary>
+    TableColumnToolboxIcon,
 
     /// <summary>
     /// Table 组件 SortIconAsc 属性图标
@@ -505,6 +526,11 @@ public enum ComponentIcons
     FullScreenButtonIcon,
 
     /// <summary>
+    /// FullScreenButton 组件 FullScreenExitButtonIcon 属性图标
+    /// </summary>
+    FullScreenExitButtonIcon,
+
+    /// <summary>
     /// Print 组件 ButtonIcon 属性图标
     /// </summary>
     PrintButtonIcon,
@@ -515,7 +541,7 @@ public enum ComponentIcons
     SweetAlertCloseIcon,
 
     /// <summary>
-    /// SweetAlertBody 组件 ConfirmuttonIcon 属性图标
+    /// SweetAlertBody 组件 SweetAlertConfirmIcon 属性图标
     /// </summary>
     SweetAlertConfirmIcon,
 
@@ -550,9 +576,19 @@ public enum ComponentIcons
     TableColumnListButtonIcon,
 
     /// <summary>
-    /// Table 组件 ExcelExportIcon 属性图标
+    /// Table 组件 ExportExcelIcon 属性图标
     /// </summary>
-    TableExcelExportIcon,
+    TableExportExcelIcon,
+
+    /// <summary>
+    /// Table 组件 ExportCsvIcon 属性图标
+    /// </summary>
+    TableExportCsvIcon,
+
+    /// <summary>
+    /// Table 组件 ExportPdfIcon 属性图标
+    /// </summary>
+    TableExportPdfIcon,
 
     /// <summary>
     /// Table 组件 SearchButtonIcon 属性图标
@@ -608,6 +644,11 @@ public enum ComponentIcons
     /// Table 组件 GearIcon 属性图标
     /// </summary>
     TableGearIcon,
+
+    /// <summary>
+    /// Table 组件 AdvancedSortButtonIcon 属性图标
+    /// </summary>
+    TableAdvancedSortButtonIcon,
 
     /// <summary>
     /// Tab 组件 PreviousIcon 属性图标
@@ -675,6 +716,21 @@ public enum ComponentIcons
     TreeViewExpandNodeIcon,
 
     /// <summary>
+    /// TreeView 组件 SearchIcon 属性图标
+    /// </summary>
+    TreeViewSearchIcon,
+
+    /// <summary>
+    /// TreeView 组件 ClearSearchIcon 属性图标
+    /// </summary>
+    TreeViewResetSearchIcon,
+
+    /// <summary>
+    /// TreeView 组件 LoadingIcon 属性图标
+    /// </summary>
+    TreeViewLoadingIcon,
+
+    /// <summary>
     /// TreeView 组件 NodeIcon 属性图标
     /// </summary>
     TreeViewNodeIcon,
@@ -732,5 +788,45 @@ public enum ComponentIcons
     /// <summary>
     /// Upload 组件 File 文件类型图标
     /// </summary>
-    FileIconFile
+    FileIconFile,
+
+    /// <summary>
+    /// QueryBuilder 组件 减少按钮图标
+    /// </summary>
+    QueryBuilderMinusIcon,
+
+    /// <summary>
+    /// QueryBuilder 组件 增加按钮图标
+    /// </summary>
+    QueryBuilderPlusIcon,
+
+    /// <summary>
+    /// QueryBuilder 组件 移除按钮图标
+    /// </summary>
+    QueryBuilderRemoveIcon,
+
+    /// <summary>
+    /// ThemeProvider 组件 自动模式图标
+    /// </summary>
+    ThemeProviderAutoModeIcon,
+
+    /// <summary>
+    /// ThemeProvider 组件 暗黑模式图标
+    /// </summary>
+    ThemeProviderDarkModeIcon,
+
+    /// <summary>
+    /// ThemeProvider 组件 明亮模式图标
+    /// </summary>
+    ThemeProviderLightModeIcon,
+
+    /// <summary>
+    /// ThemeProvider 组件 明亮模式图标
+    /// </summary>
+    ThemeProviderActiveModeIcon,
+
+    /// <summary>
+    /// Input 组件 ClearIcon 图标
+    /// </summary>
+    InputClearIcon
 }

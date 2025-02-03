@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -19,7 +20,7 @@ public abstract class BootstrapInputBase<TValue> : ValidateBase<TValue>
         .Build();
 
     /// <summary>
-    /// 
+    /// 元素实例引用
     /// </summary>
     protected ElementReference FocusElement { get; set; }
 
@@ -51,7 +52,7 @@ public abstract class BootstrapInputBase<TValue> : ValidateBase<TValue>
     /// 获得/设置 格式化字符串
     /// </summary>
     [Parameter]
-    public Func<TValue, string>? Formatter { get; set; }
+    public Func<TValue?, string>? Formatter { get; set; }
 
     /// <summary>
     /// 获得/设置 格式化字符串 如时间类型设置 yyyy-MM-dd
@@ -83,6 +84,12 @@ public abstract class BootstrapInputBase<TValue> : ValidateBase<TValue>
     [Parameter]
     public bool IsTrim { get; set; }
 
+    /// <summary>
+    /// 获得/设置 失去焦点回调方法 默认 null
+    /// </summary>
+    [Parameter]
+    public Func<TValue, Task>? OnBlurAsync { get; set; }
+
     [CascadingParameter]
     private Modal? Modal { get; set; }
 
@@ -95,7 +102,7 @@ public abstract class BootstrapInputBase<TValue> : ValidateBase<TValue>
     /// 自动获得焦点方法
     /// </summary>
     /// <returns></returns>
-    public ValueTask FocusAsync() => FocusElement.FocusAsync();
+    public async Task FocusAsync() => await FocusElement.FocusAsync();
 
     /// <summary>
     /// 全选文字
@@ -128,6 +135,11 @@ public abstract class BootstrapInputBase<TValue> : ValidateBase<TValue>
                 Type = type;
             }
         }
+
+        if (IsAutoFocus)
+        {
+            Modal?.RegisterShownCallback(this, FocusAsync);
+        }
     }
 
     /// <summary>
@@ -143,33 +155,34 @@ public abstract class BootstrapInputBase<TValue> : ValidateBase<TValue>
         {
             if (!SkipRegisterEnterEscJSInvoke && (OnEnterAsync != null || OnEscAsync != null))
             {
-                await InvokeVoidAsync("handleKeyup", Id, Interop, OnEnterAsync != null, nameof(EnterCallback), OnEscAsync != null, nameof(EscCallback));
+                await InvokeVoidAsync("handleKeyUp", GetInputId(), Interop, OnEnterAsync != null, nameof(EnterCallback), OnEscAsync != null, nameof(EscCallback));
             }
             if (IsSelectAllTextOnFocus)
             {
-                await InvokeVoidAsync("selectAllByFocus", Id);
+                await InvokeVoidAsync("selectAllByFocus", GetInputId());
             }
             if (IsSelectAllTextOnEnter)
             {
-                await InvokeVoidAsync("selectAllByEnter", Id);
+                await InvokeVoidAsync("selectAllByEnter", GetInputId());
             }
-            if (IsAutoFocus)
+            if (IsAutoFocus && Modal == null)
             {
-                if (Modal != null)
-                {
-                    await Task.Delay(100);
-                }
                 await FocusAsync();
             }
         }
     }
 
     /// <summary>
+    /// 获得输入框 Id
+    /// </summary>
+    protected virtual string? GetInputId() => Id;
+
+    /// <summary>
     /// 数值格式化委托方法
     /// </summary>
     /// <param name="value"></param>
     /// <returns></returns>
-    protected override string? FormatValueAsString(TValue value) => Formatter != null
+    protected override string? FormatValueAsString(TValue? value) => Formatter != null
         ? Formatter.Invoke(value)
         : (!string.IsNullOrEmpty(FormatString) && value != null
             ? Utility.Format(value, FormatString)
@@ -183,6 +196,17 @@ public abstract class BootstrapInputBase<TValue> : ValidateBase<TValue>
     /// <param name="validationErrorMessage"></param>
     /// <returns></returns>
     protected override bool TryParseValueFromString(string value, [MaybeNullWhen(false)] out TValue result, out string? validationErrorMessage) => base.TryParseValueFromString(IsTrim ? value.Trim() : value, out result, out validationErrorMessage);
+
+    /// <summary>
+    /// OnBlur 方法
+    /// </summary>
+    protected virtual async Task OnBlur()
+    {
+        if (OnBlurAsync != null)
+        {
+            await OnBlurAsync(Value);
+        }
+    }
 
     /// <summary>
     /// 客户端 EnterCallback 回调方法
@@ -209,5 +233,17 @@ public abstract class BootstrapInputBase<TValue> : ValidateBase<TValue>
         {
             await OnEscAsync(Value);
         }
+    }
+
+    /// <summary>
+    /// <inheritdoc />
+    /// </summary>
+    /// <param name="disposing"></param>
+    /// <returns></returns>
+    protected override async ValueTask DisposeAsync(bool disposing)
+    {
+        await base.DisposeAsync(disposing);
+
+        Modal?.UnRegisterShownCallback(this);
     }
 }

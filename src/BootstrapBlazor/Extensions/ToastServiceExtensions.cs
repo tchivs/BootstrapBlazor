@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -9,6 +10,8 @@ namespace BootstrapBlazor.Components;
 /// </summary>
 public static class ToastServiceExtensions
 {
+    // 特别备注：此处方法使用三个参数被 UniLite 插件系统使用，请勿删除
+
     /// <summary>
     /// Toast 调用成功快捷方法
     /// </summary>
@@ -30,8 +33,8 @@ public static class ToastServiceExtensions
     {
         Category = ToastCategory.Success,
         IsAutoHide = autoHide,
-        Title = title ?? "",
-        Content = content ?? "",
+        Title = title,
+        Content = content,
         ShowClose = showClose
     });
 
@@ -56,8 +59,8 @@ public static class ToastServiceExtensions
     {
         Category = ToastCategory.Error,
         IsAutoHide = autoHide,
-        Title = title ?? "",
-        Content = content ?? "",
+        Title = title,
+        Content = content,
         ShowClose = showClose
     });
 
@@ -82,8 +85,8 @@ public static class ToastServiceExtensions
     {
         Category = ToastCategory.Information,
         IsAutoHide = autoHide,
-        Title = title ?? "",
-        Content = content ?? "",
+        Title = title,
+        Content = content,
         ShowClose = showClose
     });
 
@@ -108,8 +111,8 @@ public static class ToastServiceExtensions
     {
         Category = ToastCategory.Warning,
         IsAutoHide = autoHide,
-        Title = title ?? "",
-        Content = content ?? "",
+        Title = title,
+        Content = content,
         ShowClose = showClose
     });
 }

@@ -1,4 +1,4 @@
-﻿import Data from '../../modules/data.js'
+﻿import Data from "../../modules/data.js"
 import EventHandler from "../../modules/event-handler.js"
 
 export function init(id, invoke, callback) {
@@ -14,33 +14,39 @@ export function show(id, msgId) {
         return
     }
 
-    msg.items.push(el)
+    const msgItem = { el, animationId: null }
+    msg.items.push(msgItem)
     const autoHide = el.getAttribute('data-bb-autohide') === 'true';
-    const delay = parseInt(el.getAttribute('data-bb-delay'));
-    let autoHideHandler = null;
 
-    const showHandler = setTimeout(() => {
-        clearTimeout(showHandler);
-        if (autoHide) {
-            // auto close
-            autoHideHandler = setTimeout(() => {
-                clearTimeout(autoHideHandler);
+    if (autoHide) {
+        // auto close
+        const delay = parseInt(el.getAttribute('data-bb-delay'));
+        let start = void 0
+        const autoCloseAnimation = ts => {
+            if (start === void 0) {
+                start = ts
+            }
+
+            const elapsed = ts - start;
+            if (elapsed > delay) {
                 close();
-            }, delay);
+            }
+            else {
+                msgItem.animationId = requestAnimationFrame(autoCloseAnimation);
+            }
         }
-        el.classList.add('show');
-    }, 50);
+        msgItem.animationId = requestAnimationFrame(autoCloseAnimation)
+    }
+    el.classList.add('show');
 
     const close = () => {
-        if (autoHideHandler != null) {
-            clearTimeout(autoHideHandler);
-        }
+        EventHandler.off(el, 'click')
         el.classList.remove('show');
         const hideHandler = setTimeout(function () {
             clearTimeout(hideHandler);
 
             // remove Id
-            msg.items.remove(el);
+            msg.items.pop();
             if (msg.items.length === 0) {
                 // call server method prepare remove dom
                 msg.invoke.invokeMethodAsync(msg.callback);
@@ -52,10 +58,24 @@ export function show(id, msgId) {
         e.preventDefault();
         e.stopPropagation();
 
+        // trigger on-dismiss event callback
+        const alert = e.delegateTarget.closest('.alert');
+        if(alert) {
+            const alertId = alert.getAttribute('id');
+            msg.invoke.invokeMethodAsync('Dismiss', alertId);
+        }
         close();
     });
 }
 
 export function dispose(id) {
+    const msg = Data.get(id)
+    if (msg) {
+        msg.items.forEach(item => {
+            if (item.animationId) {
+                cancelAnimationFrame(item.animationId);
+            }
+        });
+    }
     Data.remove(id)
 }

@@ -1,105 +1,65 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// Silder 组件
+/// Range 组件
 /// </summary>
-public partial class Slider
+public partial class Slider<TValue>
 {
-    /// <summary>
-    /// 获得/设置 组件当前值
-    /// </summary>
-    [Parameter]
-    public double Value { get; set; }
-
-    /// <summary>
-    /// ValueChanged 回调方法
-    /// </summary>
-    [Parameter]
-    public EventCallback<double> ValueChanged { get; set; }
-
-    /// <summary>
-    /// 获得/设置 值变化时回调方法
-    /// </summary>
-    [Parameter]
-    public Func<double, Task>? OnValueChanged { get; set; }
-
-    /// <summary>
-    /// 获得 按钮 disabled 属性
-    /// </summary>
-    protected string? Disabled => IsDisabled ? "disabled" : null;
-
-    /// <summary>
-    /// 获得/设置 是否禁用
-    /// </summary>
-    [Parameter]
-    public bool IsDisabled { get; set; }
-
-    /// <summary>
-    /// 获得/设置 最大值
-    /// </summary>
-    [Parameter]
-    public double Max { get; set; } = 100;
-
-    /// <summary>
-    /// 获得/设置 最小值
-    /// </summary>
-    [Parameter]
-    public double Min { get; set; } = 0;
-
     /// <summary>
     /// 获得 样式集合
     /// </summary>
-    private string? ClassName => CssBuilder.Default("slider")
+    private string? ClassString => CssBuilder.Default("form-range")
         .AddClassFromAttributes(AdditionalAttributes)
         .Build();
 
     /// <summary>
-    /// 获得 样式集合
+    /// 获得/设置 最小值 默认为 null 未设置
     /// </summary>
-    private string? SliderClassName => CssBuilder.Default("slider-runway")
-        .AddClass("disabled", IsDisabled)
-        .Build();
+    [Parameter]
+    [NotNull]
+    public TValue? Min { get; set; }
 
     /// <summary>
-    /// 获得 Bar 位置样式
+    /// 获得/设置 最大值 默认为 null 未设置
     /// </summary>
-    private string? BarStyle => CssBuilder.Default("left: 0%;")
-        .AddClass($"width: {Value / Max * 100}%;")
-        .Build();
+    [Parameter]
+    [NotNull]
+    public TValue? Max { get; set; }
 
     /// <summary>
-    /// 获得 按钮位置样式
+    /// 获得/设置 步长 默认为 null 未设置
     /// </summary>
-    private string? ButtonStyle => CssBuilder.Default()
-        .AddClass($"left: {Value / Max * 100}%;")
-        .Build();
+    [Parameter]
+    [NotNull]
+    public TValue? Step { get; set; }
+
+    private string? MinString => Min.ToString() == "0" ? GetRangeMinString : Min.ToString();
+
+    private string? GetRangeMinString => _range?.Minimum.ToString();
+
+    private string? MaxString => Max.ToString() == "0" ? GetRangeMaxString : Max.ToString();
+
+    private string? GetRangeMaxString => _range?.Maximum.ToString();
+
+    private string? StepString => Step.ToString() == "0" ? null : Step.ToString();
+
+    private RangeAttribute? _range = null;
 
     /// <summary>
     /// <inheritdoc/>
     /// </summary>
-    /// <returns></returns>
-    protected override Task InvokeInitAsync() => InvokeVoidAsync("init", Id, Interop, nameof(SetValue));
-
-    /// <summary>
-    /// SetValue 方法
-    /// </summary>
-    /// <param name="val"></param>
-    [JSInvokable]
-    public async Task SetValue(double val)
+    protected override void OnInitialized()
     {
-        Value = Max * val / 100;
-        if (OnValueChanged != null)
-        {
-            await OnValueChanged(Value);
-        }
+        base.OnInitialized();
 
-        if (ValueChanged.HasDelegate)
+        if (FieldIdentifier.HasValue)
         {
-            await ValueChanged.InvokeAsync(Value);
+            _range = FieldIdentifier.Value.GetRange();
         }
     }
 }

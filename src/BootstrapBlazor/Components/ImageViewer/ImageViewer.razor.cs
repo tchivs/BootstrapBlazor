@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -87,6 +88,12 @@ public partial class ImageViewer
     public List<string>? PreviewList { get; set; }
 
     /// <summary>
+    /// 获得/设置 预览大图当前链接集合点开的索引 默认为 0
+    /// </summary>
+    [Parameter]
+    public int PreviewIndex { get; set; } = 0;
+
+    /// <summary>
     /// 获得/设置 图片加载失败时回调方法
     /// </summary>
     [Parameter]
@@ -104,6 +111,13 @@ public partial class ImageViewer
     [Parameter]
     public string? FileIcon { get; set; }
 
+    /// <summary>
+    /// 获得/设置 是否交叉监听 默认 false
+    /// </summary>
+    /// <remarks>不可见时不加载图片，当图片即将可见时才开始加载图片</remarks>
+    [Parameter]
+    public bool IsIntersectionObserver { get; set; }
+
     [Inject]
     [NotNull]
     private IIconTheme? IconTheme { get; set; }
@@ -114,8 +128,6 @@ public partial class ImageViewer
 
     private bool IsError { get; set; }
 
-    private string? IsAsyncString => IsAsync ? "true" : null;
-
     /// <summary>
     /// <inheritdoc/>
     /// </summary>
@@ -123,6 +135,7 @@ public partial class ImageViewer
     {
         base.OnParametersSet();
 
+        IsError = false;
         FileIcon ??= IconTheme.GetIconByKey(ComponentIcons.ImageViewerFileIcon);
     }
 
@@ -137,7 +150,7 @@ public partial class ImageViewer
 
         if (!firstRender)
         {
-            await InvokeVoidAsync("update", Id, PreviewList);
+            await InvokeVoidAsync("update", Id, PreviewList, PreviewIndex);
         }
     }
 
@@ -145,7 +158,7 @@ public partial class ImageViewer
     /// <inheritdoc/>
     /// </summary>
     /// <returns></returns>
-    protected override Task InvokeInitAsync() => InvokeVoidAsync("init", Id, Url, PreviewList);
+    protected override Task InvokeInitAsync() => InvokeVoidAsync("init", Id, new { Url, PreviewList, PreviewIndex, Async = IsAsync, PreviewerId, Intersection = IsIntersectionObserver });
 
     private RenderFragment RenderChildContent() => builder =>
     {
@@ -153,7 +166,7 @@ public partial class ImageViewer
         {
             builder.OpenElement(0, "img");
             builder.AddAttribute(1, "class", ImageClassString);
-            if (!IsAsync)
+            if (!IsAsync && !IsIntersectionObserver)
             {
                 builder.AddAttribute(2, "src", Url);
             }
@@ -174,7 +187,7 @@ public partial class ImageViewer
             }
             if (ShouldHandleError)
             {
-                builder.AddAttribute(4, "onerror", EventCallback.Factory.Create(this, async () =>
+                builder.AddAttribute(5, "onerror", EventCallback.Factory.Create(this, async () =>
                 {
                     IsError = true;
                     if (OnErrorAsync != null)
@@ -200,7 +213,7 @@ public partial class ImageViewer
 
     private bool ShouldHandleError => HandleError || ErrorTemplate != null;
 
-    private bool ShowPreviewList => PreviewList?.Any() ?? false;
+    private bool ShowPreviewList => PreviewList != null && PreviewList.Count > 0;
 
-    private string PreviewerId => $"prev_{Id}";
+    private string? PreviewerId => ShowPreviewList ? $"prev_{Id}" : null;
 }

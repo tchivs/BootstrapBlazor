@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 
@@ -48,10 +49,10 @@ public class LinkButtonTest : BootstrapBlazorTestBase
         Assert.DoesNotContain("link-primary", cut.Markup);
 
         cut.SetParametersAndRender(pb => pb.Add(a => a.Color, Color.Danger));
-        Assert.Contains("link-danger", cut.Markup);
+        cut.WaitForAssertion(() => Assert.Contains("link-danger", cut.Markup));
 
         cut.SetParametersAndRender(pb => pb.Add(a => a.IsDisabled, true));
-        Assert.DoesNotContain("link-danger", cut.Markup);
+        cut.WaitForAssertion(() => Assert.DoesNotContain("link-danger", cut.Markup));
     }
 
     [Fact]
@@ -81,8 +82,11 @@ public class LinkButtonTest : BootstrapBlazorTestBase
         var click = false;
         var cut = Context.RenderComponent<LinkButton>(builder => builder.Add(s => s.OnClick, () => click = true));
 
-        cut.Find("a").Click();
-        Assert.True(click);
+        cut.InvokeAsync(() =>
+        {
+            cut.Find("a").Click();
+            Assert.True(click);
+        });
     }
 
     [Fact]
@@ -95,8 +99,11 @@ public class LinkButtonTest : BootstrapBlazorTestBase
             return Task.CompletedTask;
         }));
 
-        cut.Find("a").Click();
-        Assert.True(click);
+        cut.InvokeAsync(() =>
+        {
+            cut.Find("a").Click();
+            Assert.True(click);
+        });
     }
 
     [Fact]

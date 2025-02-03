@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using System.ComponentModel;
 using System.Reflection;
@@ -75,7 +76,7 @@ public static class DynamicObjectContextExtensions
     /// <param name="context"></param>
     /// <param name="columnName"></param>
     /// <param name="displayName"></param>
-    public static void AddDisplayNameAttribute(this DynamicObjectContext context, string columnName, string displayName) => context.AddAttribute<DisplayNameAttribute>(columnName, new Type[] { typeof(string) }, new object?[] { displayName });
+    public static void AddDisplayNameAttribute(this DynamicObjectContext context, string columnName, string displayName) => context.AddAttribute<DisplayNameAttribute>(columnName, [typeof(string)], [displayName]);
 
     /// <summary>
     /// 增加 DescriptionAttribute 扩展方法
@@ -83,7 +84,7 @@ public static class DynamicObjectContextExtensions
     /// <param name="context"></param>
     /// <param name="columnName"></param>
     /// <param name="description"></param>
-    public static void AddDescriptionAttribute(this DynamicObjectContext context, string columnName, string description) => context.AddAttribute<DescriptionAttribute>(columnName, new Type[] { typeof(string) }, new object?[] { description });
+    public static void AddDescriptionAttribute(this DynamicObjectContext context, string columnName, string description) => context.AddAttribute<DescriptionAttribute>(columnName, [typeof(string)], [description]);
 
     /// <summary>
     /// 增加自定义标签泛型方法

@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using System.Collections.Concurrent;
 
@@ -88,6 +89,9 @@ public partial class Table<TItem>
 
         SortName = col.GetFieldName();
 
+        // 清除高级排序 (保证点击 Header 排序的优先级最高)
+        AdvancedSortItems.Clear();
+
         // 通知 Table 组件刷新数据
         await InternalOnSortAsync(SortName, SortOrder);
     };
@@ -99,8 +103,9 @@ public partial class Table<TItem>
     /// <param name="isFilterHeader"></param>
     /// <returns></returns>
     protected string? GetHeaderClassString(ITableColumn col, bool isFilterHeader = false) => CssBuilder.Default()
-        .AddClass("sortable", col.Sortable && !isFilterHeader)
-        .AddClass("filterable", col.Filterable)
+        .AddClass("sortable", col.GetSortable() && !isFilterHeader)
+        .AddClass("filterable", col.GetFilterable())
+        .AddClass(("toolbox"), col.ToolboxTemplate != null)
         .AddClass(GetFixedCellClassString(col))
         .Build();
 
@@ -276,8 +281,9 @@ public partial class Table<TItem>
         return width;
     }
 
-    private int CalcMargin(int margin)
+    private int CalcMargin()
     {
+        var margin = 0;
         if (ShowDetails())
         {
             margin += DetailColumnWidth;
@@ -305,7 +311,16 @@ public partial class Table<TItem>
     /// </summary>
     /// <param name="col"></param>
     /// <returns></returns>
-    protected string? GetCellStyleString(ITableColumn col) => col.TextEllipsis && !AllowResizing ? $"width: {col.Width ?? 200}px" : null;
+    protected string? GetCellStyleString(ITableColumn col)
+    {
+        return col.GetTextEllipsis() && !AllowResizing
+            ? GetFixedHeaderStyleString()
+            : null;
+
+        string GetFixedHeaderStyleString() => IsFixedHeader
+            ? $"width: calc({col.Width ?? 200}px - 2 * var(--bb-table-td-padding-x));"
+            : $"width: {col.Width ?? 200}px;";
+    }
 
     /// <summary>
     /// 获得指定列头固定列样式
@@ -315,56 +330,65 @@ public partial class Table<TItem>
     /// <returns></returns>
     protected string? GetFixedCellStyleString(ITableColumn col, int margin = 0)
     {
-        var style = CssBuilder.Default();
+        string? ret = null;
         if (col.Fixed)
         {
-            var defaultWidth = 200;
-            var isTail = IsTail(col);
-            var index = Columns.IndexOf(col);
-            var width = 0;
-            var start = 0;
-            if (isTail)
-            {
-                // after
-                while (index + 1 < Columns.Count)
-                {
-                    width += Columns[index++].Width ?? defaultWidth;
-                }
-                if (ShowExtendButtons && FixedExtendButtonsColumn)
-                {
-                    width += ExtendButtonColumnWidth;
-                }
-
-                // 如果是固定表头时增加滚动条位置
-                if (IsFixedHeader && (index + 1) == Columns.Count)
-                {
-                    width += margin;
-                }
-
-                style.AddClass($"right: {width}px;");
-            }
-            else
-            {
-                if (GetFixedDetailRowHeaderColumn)
-                {
-                    width += DetailColumnWidth;
-                }
-                if (GetFixedMultipleSelectColumn)
-                {
-                    width += MultiColumnWidth;
-                }
-                if (GetFixedLineNoColumn)
-                {
-                    width += LineNoColumnWidth;
-                }
-                while (index > start)
-                {
-                    width += Columns[start++].Width ?? defaultWidth;
-                };
-                style.AddClass($"left: {width}px;");
-            }
+            ret = IsTail(col) ? GetRightStyle(col, margin) : GetLeftStyle(col);
         }
-        return style.Build();
+        return ret;
+    }
+
+    private string? GetLeftStyle(ITableColumn col)
+    {
+        var columns = GetVisibleColumns().ToList();
+        var defaultWidth = 200;
+        var width = 0;
+        var start = 0;
+        var index = columns.IndexOf(col);
+        if (GetFixedDetailRowHeaderColumn)
+        {
+            width += DetailColumnWidth;
+        }
+        if (GetFixedMultipleSelectColumn)
+        {
+            width += MultiColumnWidth;
+        }
+        if (GetFixedLineNoColumn)
+        {
+            width += LineNoColumnWidth;
+        }
+        while (index > start)
+        {
+            var column = columns[start++];
+            width += column.Width ?? defaultWidth;
+        }
+        return $"left: {width}px;";
+    }
+
+    private string? GetRightStyle(ITableColumn col, int margin)
+    {
+        var columns = GetVisibleColumns().ToList();
+        var defaultWidth = 200;
+        var width = 0;
+        var index = columns.IndexOf(col);
+
+        // after
+        while (index + 1 < columns.Count)
+        {
+            var column = columns[index++];
+            width += column.Width ?? defaultWidth;
+        }
+        if (ShowExtendButtons && FixedExtendButtonsColumn)
+        {
+            width += ExtendButtonColumnWidth;
+        }
+
+        // 如果是固定表头时增加滚动条位置
+        if (IsFixedHeader && (index + 1) == columns.Count)
+        {
+            width += margin;
+        }
+        return $"right: {width}px;";
     }
 
     /// <summary>
@@ -373,9 +397,10 @@ public partial class Table<TItem>
     /// <param name="col"></param>
     /// <returns></returns>
     protected string? GetHeaderWrapperClassString(ITableColumn col) => CssBuilder.Default("table-cell")
-        .AddClass("is-sort", col.Sortable)
-        .AddClass("is-filter", col.Filterable)
-        .AddClass(col.Align.ToDescriptionString(), col.Align == Alignment.Center || col.Align == Alignment.Right)
+        .AddClass("is-sort", col.GetSortable())
+        .AddClass("is-filter", col.GetFilterable())
+        .AddClass("is-toolbox", col.ToolboxTemplate != null)
+        .AddClass(col.GetAlign().ToDescriptionString(), col.Align == Alignment.Center || col.Align == Alignment.Right)
         .Build();
 
     /// <summary>
@@ -386,10 +411,10 @@ public partial class Table<TItem>
     /// <param name="inCell"></param>
     /// <returns></returns>
     protected string? GetCellClassString(ITableColumn col, bool hasChildren, bool inCell) => CssBuilder.Default("table-cell")
-        .AddClass(col.Align.ToDescriptionString(), col.Align == Alignment.Center || col.Align == Alignment.Right)
-        .AddClass("is-wrap", col.TextWrap)
-        .AddClass("is-ellips", col.TextEllipsis)
-        .AddClass("is-tips", col.ShowTips)
+        .AddClass(col.GetAlign().ToDescriptionString(), col.Align == Alignment.Center || col.Align == Alignment.Right)
+        .AddClass("is-wrap", col.GetTextWrap())
+        .AddClass("is-ellips", col.GetTextEllipsis())
+        .AddClass("is-tips", col.GetShowTips())
         .AddClass("is-resizable", AllowResizing)
         .AddClass("is-tree", IsTree && hasChildren)
         .AddClass("is-incell", inCell)
@@ -405,4 +430,86 @@ public partial class Table<TItem>
         .AddClass(SortIconAsc, SortName == fieldName && SortOrder == SortOrder.Asc)
         .AddClass(SortIconDesc, SortName == fieldName && SortOrder == SortOrder.Desc)
         .Build();
+
+    /// <summary>
+    /// 获取指定列头样式字符串
+    /// </summary>
+    /// <returns></returns>
+    protected string? GetColumnToolboxIconClassString() => CssBuilder.Default(ColumnToolboxIcon)
+        .Build();
+
+    #region Advanced Sort
+    /// <summary>
+    /// 获得 高级排序样式
+    /// </summary>
+    protected string? AdvancedSortClass => CssBuilder.Default("btn btn-secondary")
+        .AddClass("btn-info", AdvancedSortItems.Any())
+        .Build();
+
+    /// <summary>
+    /// 获得/设置 是否显示高级排序按钮 默认 false 不显示 />
+    /// </summary>
+    [Parameter]
+    public bool ShowAdvancedSort { get; set; }
+
+    /// <summary>
+    /// 获得/设置 高级排序按钮图标
+    /// </summary>
+    [Parameter]
+    public string? AdvancedSortButtonIcon { get; set; }
+
+    /// <summary>
+    /// 获得/设置 高级排序框的大小 默认 Medium
+    /// </summary>
+    [Parameter]
+    public Size AdvancedSortDialogSize { get; set; } = Size.Medium;
+
+    /// <summary>
+    /// 获得/设置 高级排序框是否可以拖拽 默认 false 不可以拖拽
+    /// </summary>
+    [Parameter]
+    public bool AdvancedSortDialogIsDraggable { get; set; }
+
+    /// <summary>
+    /// 获得/设置 高级排序框是否显示最大化按钮 默认 false 不显示
+    /// </summary>
+    [Parameter]
+    public bool AdvancedSortDialogShowMaximizeButton { get; set; }
+
+    /// <summary>
+    /// 获得/设置 高级排序，默认为 Empty
+    /// </summary>
+    [Parameter]
+    public List<TableSortItem> AdvancedSortItems { get; set; } = [];
+
+    /// <summary>
+    /// 高级排序按钮点击时调用此方法
+    /// </summary>
+    private async Task ShowSortDialog()
+    {
+        var result = await DialogService.ShowModal<TableAdvancedSortDialog>(new ResultDialogOption
+        {
+            Title = AdvancedSortModalTitle,
+            Size = AdvancedSortDialogSize,
+            IsDraggable = AdvancedSortDialogIsDraggable,
+            ShowMaximizeButton = AdvancedSortDialogShowMaximizeButton,
+            ComponentParameters = new Dictionary<string, object>
+            {
+                [nameof(TableAdvancedSortDialog.Value)] = AdvancedSortItems,
+                [nameof(TableAdvancedSortDialog.ValueChanged)] = EventCallback.Factory.Create<List<TableSortItem>>(this, v => AdvancedSortItems = v),
+                [nameof(TableAdvancedSortDialog.Items)] = Columns.Where(p => p.GetSortable()).Select(p => new SelectedItem(p.GetFieldName(), p.GetDisplayName()))
+            }
+        });
+        if (result == DialogResult.Yes)
+        {
+            await QueryAsync();
+        }
+    }
+
+    /// <summary>
+    /// 获得 <see cref="AdvancedSortItems"/> 中过滤条件
+    /// </summary>
+    /// <returns></returns>
+    protected IEnumerable<string> GetAdvancedSortList() => ShowAdvancedSort ? AdvancedSortItems.Select(p => p.ToString()) : Enumerable.Empty<string>();
+    #endregion
 }

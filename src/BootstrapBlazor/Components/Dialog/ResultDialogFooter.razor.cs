@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.Extensions.Localization;
 
@@ -67,46 +68,60 @@ public partial class ResultDialogFooter
     /// 显示关闭按钮
     /// </summary>
     [Parameter]
-    [NotNull]
+    [Obsolete("已弃用，请删除即可; Deprecated. Just delete it.")]
+    [ExcludeFromCodeCoverage]
     public bool ShowCloseButton { get; set; } = true;
 
     /// <summary>
     /// 关闭按钮文本
     /// </summary>
     [Parameter]
-    [NotNull]
+    [Obsolete("已弃用，请删除即可; Deprecated. Just delete it.")]
+    [ExcludeFromCodeCoverage]
     public string? ButtonCloseText { get; set; }
 
     /// <summary>
     /// 关闭按钮图标
     /// </summary>
     [Parameter]
-    [NotNull]
+    [Obsolete("已弃用，请删除即可; Deprecated. Just delete it.")]
+    [ExcludeFromCodeCoverage]
     public string? ButtonCloseIcon { get; set; }
 
     /// <summary>
     /// 关闭按钮颜色
     /// </summary>
     [Parameter]
+    [Obsolete("已弃用，请删除即可; Deprecated. Just delete it.")]
+    [ExcludeFromCodeCoverage]
     public Color ButtonCloseColor { get; set; } = Color.Secondary;
 
     /// <summary>
     /// 获得/设置 点击关闭按钮回调方法
     /// </summary>
     [Parameter]
+    [Obsolete("已弃用，删除即可; Deprecated. Just delete it.")]
+    [ExcludeFromCodeCoverage]
     public Func<Task>? OnClickClose { get; set; }
 
     /// <summary>
     /// 获得/设置 点击确认按钮回调方法
     /// </summary>
     [Parameter]
+    [Obsolete("已弃用，删除即可; Deprecated. Just delete it.")]
+    [ExcludeFromCodeCoverage]
     public Func<Task>? OnClickYes { get; set; }
 
     /// <summary>
     /// 获得/设置 点击取消按钮回调方法
     /// </summary>
     [Parameter]
+    [Obsolete("已弃用，删除即可; Deprecated. Just delete it.")]
+    [ExcludeFromCodeCoverage]
     public Func<Task>? OnClickNo { get; set; }
+
+    [CascadingParameter(Name = "ResultDialogContext")]
+    private Func<DialogResult, Task>? SetResultAsync { get; set; }
 
     [Inject]
     [NotNull]
@@ -123,28 +138,18 @@ public partial class ResultDialogFooter
     {
         base.OnParametersSet();
 
-        ButtonCloseText ??= Localizer[nameof(ButtonCloseText)];
         ButtonNoText ??= Localizer[nameof(ButtonNoText)];
         ButtonYesText ??= Localizer[nameof(ButtonYesText)];
 
-        ButtonYesIcon ??= IconTheme.GetIconByKey(ComponentIcons.ResultDialogYesIcon);
         ButtonNoIcon ??= IconTheme.GetIconByKey(ComponentIcons.ResultDialogNoIcon);
-        ButtonCloseIcon ??= IconTheme.GetIconByKey(ComponentIcons.ResultDialogCloseIcon);
+        ButtonYesIcon ??= IconTheme.GetIconByKey(ComponentIcons.ResultDialogYesIcon);
     }
 
-    private async Task ButtonClick(DialogResult dialogResult)
+    private async Task OnClick(DialogResult dialogResult)
     {
-        if (dialogResult == DialogResult.Yes && OnClickYes != null)
+        if (SetResultAsync != null)
         {
-            await OnClickYes();
-        }
-        if (dialogResult == DialogResult.No && OnClickNo != null)
-        {
-            await OnClickNo();
-        }
-        if (dialogResult == DialogResult.Close && OnClickClose != null)
-        {
-            await OnClickClose();
+            await SetResultAsync(dialogResult);
         }
     }
 }

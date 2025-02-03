@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 
@@ -84,17 +85,29 @@ public class CardTest : BootstrapBlazorTestBase
     [Fact]
     public void Collapsed_Ok()
     {
+        bool collapsed = false;
         var cut = Context.RenderComponent<Card>(builder =>
         {
             builder.Add(a => a.IsCollapsible, true);
             builder.Add(a => a.HeaderText, "Header");
             builder.Add(a => a.Collapsed, true);
+            builder.Add(a => a.CollapsedChanged, v =>
+            {
+                collapsed = v;
+            });
         });
         Assert.Contains("data-bs-toggle=\"collapse\"", cut.Markup);
         Assert.Contains("collapse", cut.Markup);
 
         cut.SetParametersAndRender(pb => pb.Add(a => a.Collapsed, false));
         Assert.Contains("collapse show", cut.Markup);
+
+
+        cut.InvokeAsync(async () =>
+        {
+            await cut.Instance.ToggleCollapse(true);
+            Assert.True(cut.Instance.Collapsed);
+        });
     }
 
     private static RenderFragment CreateComponent() => builder =>

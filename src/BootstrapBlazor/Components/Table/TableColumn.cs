@@ -1,25 +1,19 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.AspNetCore.Components.Forms;
 using System.Linq.Expressions;
 
 namespace BootstrapBlazor.Components;
-#if NET5_0
-/// <summary>
-/// 表头组件
-/// </summary>
-/// <typeparam name="TType">绑定字段值类型</typeparam>
-public class TableColumn<TType> : BootstrapComponentBase, ITableColumn
-#elif NET6_0_OR_GREATER
+
 /// <summary>
 /// 表头组件
 /// </summary>
 /// <typeparam name="TItem">模型泛型</typeparam>
 /// <typeparam name="TType">绑定字段值类型</typeparam>
 public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
-#endif
 {
     /// <summary>
     /// 获得/设置 相关过滤器
@@ -58,10 +52,10 @@ public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
     public Expression<Func<TType>>? FieldExpression { get; set; }
 
     /// <summary>
-    /// 获得/设置 是否排序 默认 false
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
-    public bool Sortable { get; set; }
+    public bool? Sortable { get; set; }
 
     /// <summary>
     /// 获得/设置 是否为默认排序列 默认为 false
@@ -70,16 +64,16 @@ public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
     public bool DefaultSort { get; set; }
 
     /// <summary>
-    /// 获得/设置 本列是否允许换行 默认为 false
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
-    public bool TextWrap { get; set; }
+    public bool? TextWrap { get; set; }
 
     /// <summary>
-    /// 获得/设置 本列文本超出省略 默认为 false
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
-    public bool TextEllipsis { get; set; }
+    public bool? TextEllipsis { get; set; }
 
     /// <summary>
     /// 获得/设置 是否显示标签 Tooltip 多用于标签文字过长导致裁减时使用 默认 null
@@ -112,10 +106,10 @@ public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
     public bool HeaderTextEllipsis { get; set; }
 
     /// <summary>
-    /// 获得/设置 步长 默认为 null
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
-    public object? Step { get; set; }
+    public string? Step { get; set; }
 
     /// <summary>
     /// 获得/设置 Textarea 行数 默认为 0
@@ -130,41 +124,96 @@ public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
     public SortOrder DefaultSortOrder { get; set; }
 
     /// <summary>
-    /// 获得/设置 是否可过滤数据 默认 false
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
-    public bool Filterable { get; set; }
+    public bool? Filterable { get; set; }
 
     /// <summary>
-    /// 获得/设置 是否参与搜索自动生成 默认 false
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
-    public bool Searchable { get; set; }
+    public bool? Searchable { get; set; }
 
     /// <summary>
-    /// 获得/设置 当前列是否可编辑 默认为 true 当设置为 false 时自动生成编辑 UI 不生成此列
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
+    public bool? Ignore { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    [ExcludeFromCodeCoverage]
+    [Obsolete("已弃用，是否可编辑改用 Readonly 参数，是否可见改用 Ignore 参数; Deprecated If it is editable, use the Readonly parameter. If it is visible, use the Ignore parameter.")]
     public bool Editable { get; set; } = true;
 
     /// <summary>
-    /// 获得/设置 当前列编辑时是否为只读模式 默认为 false
+    /// <inheritdoc/>
     /// </summary>
-    /// <remarks>此属性覆盖 <see cref="IsReadonlyWhenAdd"/> 与 <see cref="IsReadonlyWhenEdit"/> 即新建与编辑时均只读</remarks>
     [Parameter]
-    public bool Readonly { get; set; }
+    public bool? Readonly { get; set; }
 
     /// <summary>
-    /// 获得/设置 新建时此列只读 默认为 false
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
-    public bool IsReadonlyWhenAdd { get; set; }
+    public bool? IsReadonlyWhenAdd { get; set; }
 
     /// <summary>
-    /// 获得/设置 编辑时此列只读 默认为 false
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
-    public bool IsReadonlyWhenEdit { get; set; }
+    public bool? IsReadonlyWhenEdit { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public bool? Visible { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public bool? IsVisibleWhenAdd { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public bool? IsVisibleWhenEdit { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public bool? Required { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public bool? IsRequiredWhenAdd { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public bool? IsRequiredWhenEdit { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public string? RequiredErrorMessage { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public Func<ITableColumn, string?, SearchFilterAction>? CustomSearch { get; set; }
 
     /// <summary>
     /// 获得/设置 是否不进行验证 默认为 false
@@ -200,19 +249,19 @@ public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
     /// <inheritdoc/>
     /// </summary>
     [Parameter]
-    public bool ShowCopyColumn { get; set; }
-
-    /// <summary>
-    /// 获得/设置 是否显示本列 默认 true 显示
-    /// </summary>
-    [Parameter]
-    public bool Visible { get; set; } = true;
+    public bool? ShowCopyColumn { get; set; }
 
     /// <summary>
     /// 获得/设置 字段鼠标悬停提示
     /// </summary>
     [Parameter]
-    public bool ShowTips { get; set; }
+    public bool? ShowTips { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public Func<object?, Task<string?>>? GetTooltipTextCallback { get; set; }
 
     /// <summary>
     /// 获得/设置 列 td 自定义样式 默认为 null 未设置
@@ -221,10 +270,10 @@ public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
     public string? CssClass { get; set; }
 
     /// <summary>
-    /// 获得/设置 文字对齐方式 默认为 Alignment.None
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
-    public Alignment Align { get; set; }
+    public Alignment? Align { get; set; }
 
     /// <summary>
     /// 获得/设置 格式化字符串 如时间类型设置 yyyy-MM-dd
@@ -233,17 +282,16 @@ public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
     public string? FormatString { get; set; }
 
     /// <summary>
-    /// 获得/设置 列格式化回调委托
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
-    public Func<object?, Task<string>>? Formatter { get; set; }
+    public Func<object?, Task<string?>>? Formatter { get; set; }
 
     /// <summary>
     /// 获得/设置 显示模板
     /// </summary>
     [Parameter]
-#if NET5_0
-    public RenderFragment<TableColumnContext<object, TType>>? Template { get; set; }
+    public RenderFragment<TableColumnContext<TItem, TType?>>? Template { get; set; }
 
     /// <summary>
     /// 内部使用负责把 object 类型的绑定数据值转化为泛型数据传递给前端
@@ -253,44 +301,27 @@ public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
         get => Template == null ? null : new RenderFragment<object>(context => builder =>
         {
             // 此处 context 为行数据
-            var fieldName = GetFieldName();
-            var value = Utility.GetPropertyValue<object, TType>(context, fieldName);
-            builder.AddContent(0, Template.Invoke(new TableColumnContext<object, TType>(context, value)));
+            if (this is TableTemplateColumn<TItem>)
+            {
+                builder.AddContent(0, Template.Invoke(new TableColumnContext<TItem, TType?>((TItem)context, default)));
+            }
+            else
+            {
+                var fieldName = GetFieldName();
+                var value = Utility.GetPropertyValue<object, TType?>(context, fieldName);
+                builder.AddContent(0, Template.Invoke(new TableColumnContext<TItem, TType?>((TItem)context, value)));
+            }
         });
         set
         {
 
         }
     }
-#elif NET6_0_OR_GREATER
-    public RenderFragment<TableColumnContext<TItem, TType>>? Template { get; set; }
-
-    /// <summary>
-    /// 内部使用负责把 object 类型的绑定数据值转化为泛型数据传递给前端
-    /// </summary>
-    RenderFragment<object>? ITableColumn.Template
-    {
-        get => Template == null ? null : new RenderFragment<object>(context => builder =>
-        {
-            // 此处 context 为行数据
-            var fieldName = GetFieldName();
-            var value = Utility.GetPropertyValue<object, TType>(context, fieldName);
-            builder.AddContent(0, Template.Invoke(new TableColumnContext<TItem, TType>((TItem)context, value)));
-        });
-        set
-        {
-
-        }
-    }
-#endif
 
     /// <summary>
     /// 获得/设置 编辑模板
     /// </summary>
     [Parameter]
-#if NET5_0
-    public RenderFragment<object>? EditTemplate { get; set; }
-#elif NET6_0_OR_GREATER
     public RenderFragment<TItem>? EditTemplate { get; set; }
 
     RenderFragment<object>? IEditorItem.EditTemplate
@@ -306,16 +337,12 @@ public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
         {
         }
     }
-#endif
 
     /// <summary>
     /// 获得/设置 搜索模板
     /// </summary>
     /// <value></value>
     [Parameter]
-#if NET5_0
-    public RenderFragment<object>? SearchTemplate { get; set; }
-#elif NET6_0_OR_GREATER
     public RenderFragment<TItem>? SearchTemplate { get; set; }
 
     RenderFragment<object>? ITableColumn.SearchTemplate
@@ -331,7 +358,6 @@ public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
         {
         }
     }
-#endif
 
     /// <summary>
     /// 获得/设置 过滤模板
@@ -344,6 +370,12 @@ public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
     /// </summary>
     [Parameter]
     public RenderFragment<ITableColumn>? HeaderTemplate { get; set; }
+
+    /// <summary>
+    /// 获得/设置 列工具栏模板 默认 null
+    /// </summary>
+    [Parameter]
+    public RenderFragment<ITableColumn>? ToolboxTemplate { get; set; }
 
     /// <summary>
     /// 获得/设置 显示节点阈值 默认值 BreakPoint.None 未设置
@@ -382,16 +414,28 @@ public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
     public bool IsPopover { get; set; }
 
     /// <summary>
-    /// 获得/设置 字典数据源字符串比较规则 默认 StringComparison.OrdinalIgnoreCase 大小写不敏感 
+    /// <inheritdoc/>>
     /// </summary>
     [Parameter]
     public StringComparison LookupStringComparison { get; set; } = StringComparison.OrdinalIgnoreCase;
 
     /// <summary>
-    /// 获得/设置 字典数据源服务的类别 常用于外键自动转换为名称操作
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public ILookupService? LookupService { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>>
     /// </summary>
     [Parameter]
     public string? LookupServiceKey { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>>
+    /// </summary>
+    [Parameter]
+    public object? LookupServiceData { get; set; }
 
     /// <summary>
     /// 获得/设置 单元格回调方法
@@ -400,37 +444,16 @@ public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
     public Action<TableCellArgs>? OnCellRender { get; set; }
 
     /// <summary>
+    /// 获得/设置 是否为 MarkupString 默认 false
+    /// </summary>
+    [Parameter]
+    public bool IsMarkupString { get; set; }
+
+    /// <summary>
     /// 获得/设置 自定义验证集合
     /// </summary>
     [Parameter]
     public List<IValidator>? ValidateRules { get; set; }
-
-    /// <summary>
-    /// 获得/设置 Table 实例
-    /// </summary>
-    [CascadingParameter]
-    protected ITable? Table { get; set; }
-
-    /// <summary>
-    /// 组件初始化方法
-    /// </summary>
-    protected override void OnInitialized()
-    {
-        Table?.Columns.Add(this);
-        if (FieldExpression != null)
-        {
-            _fieldIdentifier = FieldIdentifier.Create(FieldExpression);
-        }
-
-        // 获取模型属性定义类型
-        PropertyType = typeof(TType);
-    }
-
-    private FieldIdentifier? _fieldIdentifier;
-    /// <summary>
-    /// 获取绑定字段显示名称方法
-    /// </summary>
-    public string GetDisplayName() => Text ?? _fieldIdentifier?.GetDisplayName() ?? FieldName ?? "";
 
     /// <summary>
     /// 获得/设置 绑定类字段名称
@@ -449,6 +472,35 @@ public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
     /// </summary>
     [Parameter]
     public int GroupOrder { get; set; }
+
+    /// <summary>
+    /// 获得/设置 Table 实例
+    /// </summary>
+    [CascadingParameter]
+    protected IColumnCollection? Columns { get; set; }
+
+    /// <summary>
+    /// 组件初始化方法
+    /// </summary>
+    protected override void OnInitialized()
+    {
+        Columns?.Columns.Add(this);
+
+        if (FieldExpression != null)
+        {
+            _fieldIdentifier = FieldIdentifier.Create(FieldExpression);
+        }
+
+        // 获取模型属性定义类型
+        PropertyType = typeof(TType);
+    }
+
+    private FieldIdentifier? _fieldIdentifier;
+
+    /// <summary>
+    /// 获取绑定字段显示名称方法
+    /// </summary>
+    public virtual string GetDisplayName() => Text ?? _fieldIdentifier?.GetDisplayName() ?? FieldName ?? "";
 
     /// <summary>
     /// 获取绑定字段信息方法
@@ -474,7 +526,7 @@ public class TableColumn<TItem, TType> : BootstrapComponentBase, ITableColumn
                 express = member.Expression;
             }
 
-            if (fields.Any())
+            if (fields.Count != 0)
             {
                 fields.Reverse();
                 FieldName = string.Join(".", fields);

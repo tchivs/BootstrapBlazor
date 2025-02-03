@@ -8,13 +8,17 @@
 }
 <div @attributes="@AdditionalAttributes" class="@ClassString" id="@Id" data-bb-previewer-id="@PreviewerId">
     <div class="@BodyClassString">
+        @if (IsUploadButtonAtFirst && CheckCanUpload())
+        {
+            @RenderAdd
+        }
         @foreach (var item in GetUploadFiles())
         {
             <div @key="@item" class="@GetItemClassString(item)">
                 <div class="upload-item-body">
                     @if (IsImage(item))
                     {
-                        <img alt="prevUrl" src="@item.PrevUrl" />
+                        <img class="upload-item-body-image" alt="prevUrl" src="@item.PrevUrl" @onclick="() => OnClickZoom(item)" />
                     }
                     else if (IconTemplate != null)
                     {
@@ -30,22 +34,31 @@
                     <div class="btn-group">
                         @if (ShowZoomButton)
                         {
-                            <button type="button" class="btn btn-sm btn-secondary btn-zoom" disabled="@GetDiabledString(item)" @onclick="() => OnClickZoom(item)" aria-label="zoom">
+                            <button type="button" class="btn btn-sm btn-secondary btn-zoom" disabled="@GetDisabledString(item)" @onclick="() => OnClickZoom(item)" aria-label="zoom">
                                 <i class="@ZoomIcon"></i>
                             </button>
                         }
                         @if (ShowDownloadButton)
                         {
-                            <button type="button" class="btn btn-sm btn-secondary btn-download" disabled="@GetDiabledString(item)" @onclick="() => OnClickDownload(item)" aria-label="download">
+                            <button type="button" class="btn btn-sm btn-secondary btn-download" disabled="@GetDisabledString(item)" @onclick="() => OnClickDownload(item)" aria-label="download">
                                 <i class="@DownloadIcon"></i>
                             </button>
                         }
+                        @if (GetShowProgress(item))
+                        {
+                            <button type="button" class="btn btn-sm btn-secondary btn-cancel" @onclick="() => OnClickCancel(item)" aria-label="cancel">
+                                <i class="@CancelIcon"></i>
+                            </button>
+                        }
                     </div>
-                    <DynamicElement TagName="button" type="button" class="btn btn-sm btn-outline-danger"
-                                    disabled="@GetDeleteButtonDiabledString(item)" aria-label="delete"
-                                    TriggerClick="@(!IsDisabled)" OnClick="@(() => OnCardFileDelete(item))">
-                        <i class="@RemoveIcon"></i>
-                    </DynamicElement>
+                    @if (ShowDeletedButton)
+                    {
+                        <DynamicElement TagName="button" type="button" class="btn btn-sm btn-outline-danger"
+                                        disabled="@GetDeleteButtonDisabledString(item)" aria-label="delete"
+                                        TriggerClick="@(!IsDisabled)" OnClick="@(() => OnCardFileDelete(item))">
+                            <i class="@RemoveIcon"></i>
+                        </DynamicElement>
+                    }
                 </div>
                 @if (GetShowProgress(item))
                 {
@@ -53,22 +66,13 @@
                 }
                 <span class="upload-item-label">
                     <i class="@StatusIconString"></i>
-                    <i class="@DeleteIcon"></i>
+                    <i class="@DeleteIconString"></i>
                 </span>
             </div>
         }
-        @if (CanUpload)
+        @if (!IsUploadButtonAtFirst && CheckCanUpload())
         {
-            <div class="@CardItemClass">
-                <div class="upload-item-actions btn-browser">
-                    @if (!IsDisabled)
-                    {
-                        <span class="upload-item-plus">
-                            <i class="@AddIcon"></i>
-                        </span>
-                    }
-                </div>
-            </div>
+            @RenderAdd
         }
     </div>
     <InputFile AdditionalAttributes="@GetUploadAdditionalAttributes()" OnChange="OnFileChange" />
@@ -78,3 +82,17 @@
         <ImagePreviewer Id="@PreviewerId" PreviewList="PreviewList" />
     }
 </div>
+
+@code {
+    RenderFragment RenderAdd =>
+    @<div class="@CardItemClass">
+        <div class="upload-item-actions btn-browser">
+            @if (!IsDisabled)
+        {
+            <span class="upload-item-plus">
+                <i class="@AddIcon"></i>
+            </span>
+        }
+        </div>
+    </div>;
+}

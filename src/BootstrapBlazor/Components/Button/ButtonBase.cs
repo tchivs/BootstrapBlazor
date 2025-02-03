@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.AspNetCore.Components.Web;
 
@@ -96,6 +97,13 @@ public abstract class ButtonBase : TooltipWrapperBase
     public bool IsAsync { get; set; }
 
     /// <summary>
+    /// 获得/设置 是否异步结束后是否保持禁用状态，默认为 false
+    /// </summary>
+    /// <remarks><see cref="IsAsync"/> 开启时有效</remarks>
+    [Parameter]
+    public bool IsKeepDisabled { get; set; }
+
+    /// <summary>
     /// 获得/设置 显示文字
     /// </summary>
     [Parameter]
@@ -111,7 +119,7 @@ public abstract class ButtonBase : TooltipWrapperBase
     /// 获得/设置 Size 大小
     /// </summary>
     [Parameter]
-    public Size Size { get; set; } = Size.None;
+    public Size Size { get; set; }
 
     /// <summary>
     /// 获得/设置 Block 模式
@@ -135,6 +143,7 @@ public abstract class ButtonBase : TooltipWrapperBase
     /// 获得/设置 RenderFragment 实例
     /// </summary>
     [Parameter]
+    [NotNull]
     public RenderFragment? ChildContent { get; set; }
 
     /// <summary>
@@ -154,6 +163,8 @@ public abstract class ButtonBase : TooltipWrapperBase
     /// 获得/设置 是否当前正在异步执行操作
     /// </summary>
     protected bool IsAsyncLoading { get; set; }
+
+    private string? _lastTooltipText;
 
     /// <summary>
     /// OnInitialized 方法
@@ -204,6 +215,7 @@ public abstract class ButtonBase : TooltipWrapperBase
         if (firstRender)
         {
             _prevDisable = IsDisabled;
+            _lastTooltipText = TooltipText;
             if (!IsDisabled)
             {
                 await ShowTooltip();
@@ -217,6 +229,14 @@ public abstract class ButtonBase : TooltipWrapperBase
                 await RemoveTooltip();
             }
             else
+            {
+                await ShowTooltip();
+            }
+        }
+        else if (Tooltip == null && _lastTooltipText != TooltipText)
+        {
+            _lastTooltipText = TooltipText;
+            if (!IsDisabled)
             {
                 await ShowTooltip();
             }

@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using System.ComponentModel.DataAnnotations;
 
@@ -8,6 +9,35 @@ namespace UnitTest.Components;
 
 public class InputNumberTest : BootstrapBlazorTestBase
 {
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0.0)]
+    public async Task OnInput_Ok(double? v)
+    {
+        double? value = 0.0;
+        var cut = Context.RenderComponent<BootstrapInputNumber<double?>>(builder =>
+        {
+            builder.Add(a => a.Value, v);
+            builder.Add(a => a.UseInputEvent, true);
+            builder.Add(a => a.ValueChanged, EventCallback.Factory.Create<double?>(this, v =>
+            {
+                value = v;
+            }));
+        });
+        var input = cut.Find("input");
+        await cut.InvokeAsync(() =>
+        {
+            input.Input("0.0");
+        });
+        cut.Contains("value=\"0.0\"");
+
+        await cut.InvokeAsync(() =>
+        {
+            input.Input("0.01");
+        });
+        cut.Contains("value=\"0.01\"");
+    }
+
     [Fact]
     public void OnBlur_Ok()
     {
@@ -93,7 +123,40 @@ public class InputNumberTest : BootstrapBlazorTestBase
     }
 
     [Fact]
-    public void ShowButton_Ok()
+    public async Task Nullable_Ok()
+    {
+        var cut = Context.RenderComponent<BootstrapInputNumber<int?>>(pb =>
+        {
+            pb.Add(a => a.Value, 5);
+        });
+        var input = cut.Find("input");
+        await cut.InvokeAsync(() =>
+        {
+            input.Change("1+2");
+            input.Blur();
+        });
+        Assert.Null(cut.Instance.Value);
+    }
+
+    [Fact]
+    public async Task OnBlurAsync_Ok()
+    {
+        var blur = false;
+        var cut = Context.RenderComponent<BootstrapInputNumber<int>>(builder =>
+        {
+            builder.Add(a => a.OnBlurAsync, v =>
+            {
+                blur = true;
+                return Task.CompletedTask;
+            });
+        });
+        var input = cut.Find("input");
+        await cut.InvokeAsync(() => { input.Blur(); });
+        Assert.True(blur);
+    }
+
+    [Fact]
+    public async Task ShowButton_Ok()
     {
         var inc = false;
         var dec = false;
@@ -114,11 +177,21 @@ public class InputNumberTest : BootstrapBlazorTestBase
         cut.Contains("class=\"input-group\"");
 
         var buttons = cut.FindAll("button");
-        cut.InvokeAsync(() => buttons[0].Click());
+        await cut.InvokeAsync(() => buttons[0].Click());
         Assert.True(inc);
+        Assert.Equal(-1, cut.Instance.Value);
 
-        cut.InvokeAsync(() => buttons[1].Click());
+        await cut.InvokeAsync(() => buttons[1].Click());
         Assert.True(dec);
+        Assert.Equal(0, cut.Instance.Value);
+
+        cut.SetParametersAndRender(pb => pb.Add(a => a.Step, "10"));
+        buttons = cut.FindAll("button");
+        await cut.InvokeAsync(() => buttons[0].Click());
+        Assert.Equal(-10, cut.Instance.Value);
+
+        await cut.InvokeAsync(() => buttons[1].Click());
+        Assert.Equal(0, cut.Instance.Value);
     }
 
     [Theory]
@@ -160,7 +233,7 @@ public class InputNumberTest : BootstrapBlazorTestBase
             return Task.CompletedTask;
         }
 
-        protected override string? InternalFormat(string value)
+        protected override string? InternalFormat(string? value)
         {
             return base.InternalFormat(value);
         }

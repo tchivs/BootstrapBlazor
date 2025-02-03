@@ -1,6 +1,9 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
+
+using System.Text.Json.Serialization;
 
 namespace BootstrapBlazor.Components;
 
@@ -13,6 +16,7 @@ public abstract class BootstrapComponentBase : ComponentBase, IHandleEvent
     /// 获得/设置 用户自定义属性
     /// </summary>
     [Parameter(CaptureUnmatchedValues = true)]
+    [JsonIgnore]
     public IDictionary<string, object>? AdditionalAttributes { get; set; }
 
     /// <summary>
@@ -48,7 +52,7 @@ public abstract class BootstrapComponentBase : ComponentBase, IHandleEvent
                 return;
             }
 
-            if (ErrorLogger != null)
+            if (ErrorLogger is { EnableErrorLogger: true })
             {
                 IsNotRender = true;
                 await ErrorLogger.HandlerExceptionAsync(ex);

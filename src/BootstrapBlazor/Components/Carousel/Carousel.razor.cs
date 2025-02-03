@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -44,7 +45,7 @@ public partial class Carousel
     /// 获得 Images 集合
     /// </summary>
     [Parameter]
-    public IEnumerable<string> Images { get; set; } = Enumerable.Empty<string>();
+    public IEnumerable<string> Images { get; set; } = [];
 
     /// <summary>
     /// 获得/设置 内部图片的宽度
@@ -63,6 +64,12 @@ public partial class Carousel
     /// </summary>
     [Parameter]
     public Func<string, Task>? OnClick { get; set; }
+
+    /// <summary>
+    /// 获得/设置 幻灯片切换后回调方法
+    /// </summary>
+    [Parameter]
+    public Func<int, Task>? OnSlideChanged { get; set; }
 
     /// <summary>
     /// 获得/设置 子组件 要求使用 <see cref="CarouselItem"/>
@@ -100,11 +107,25 @@ public partial class Carousel
     [Parameter]
     public string? NextIcon { get; set; }
 
+    /// <summary>
+    /// 获得/设置 鼠标悬停时是否暂停播放 默认 true
+    /// </summary>
+    [Parameter]
+    public bool HoverPause { get; set; } = true;
+
+    /// <summary>
+    /// 获得/设置 自动播放方式 默认 <see cref="CarouselPlayMode.AutoPlayOnload"/>
+    /// </summary>
+    [Parameter]
+    public CarouselPlayMode PlayMode { get; set; }
+
     [Inject]
     [NotNull]
     private IIconTheme? IconTheme { get; set; }
 
     private string? DisableTouchSwipingString => DisableTouchSwiping ? "false" : null;
+
+    private string? PauseString => HoverPause ? "hover" : "false";
 
     /// <summary>
     /// OnParametersSet 方法
@@ -144,6 +165,14 @@ public partial class Carousel
     }
 
     /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    /// <returns></returns>
+    protected override Task InvokeInitAsync() => InvokeVoidAsync("init", Id, new { Invoke = Interop, Method = InvokeMethodName });
+
+    private string? InvokeMethodName => OnSlideChanged == null ? null : nameof(TriggerSlideChanged);
+
+    /// <summary>
     /// 点击 Image 是触发此方法
     /// </summary>
     /// <returns></returns>
@@ -165,4 +194,18 @@ public partial class Carousel
     /// </summary>
     /// <param name="item"></param>
     internal void RemoveItem(CarouselItem item) => Items.Remove(item);
+
+    /// <summary>
+    /// 幻灯片切换事件回调 由 JavaScript 调用
+    /// </summary>
+    /// <param name="index"></param>
+    /// <returns></returns>
+    [JSInvokable]
+    public async ValueTask TriggerSlideChanged(int index)
+    {
+        if (OnSlideChanged != null)
+        {
+            await OnSlideChanged(index);
+        }
+    }
 }

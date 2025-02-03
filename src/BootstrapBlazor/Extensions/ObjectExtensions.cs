@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using System.Globalization;
 using System.Reflection;
@@ -50,14 +51,34 @@ public static class ObjectExtensions
     public static bool IsNumber(this Type t)
     {
         var targetType = Nullable.GetUnderlyingType(t) ?? t;
-        var check =
-            targetType == typeof(int) ||
-            targetType == typeof(long) ||
-            targetType == typeof(short) ||
-            targetType == typeof(float) ||
-            targetType == typeof(double) ||
-            targetType == typeof(decimal);
-        return check;
+        return targetType == typeof(int) || targetType == typeof(long) || targetType == typeof(short) ||
+            targetType == typeof(float) || targetType == typeof(double) || targetType == typeof(decimal);
+    }
+
+    /// <summary>
+    /// 检查是否应该渲染成 <see cref="BootstrapInputNumber{TValue}"/>
+    /// </summary>
+    /// <param name="t"></param>
+    /// <returns></returns>
+    public static bool IsNumberWithDotSeparator(this Type t)
+    {
+        var separator = CultureInfo.CurrentUICulture.NumberFormat.NumberDecimalSeparator;
+        if (separator != ".")
+        {
+            return false;
+        }
+        return t.IsNumber();
+    }
+
+    /// <summary>
+    /// 检查是否为 Boolean 数据类型
+    /// </summary>
+    /// <param name="t"></param>
+    /// <returns></returns>
+    public static bool IsBoolean(this Type t)
+    {
+        var targetType = Nullable.GetUnderlyingType(t) ?? t;
+        return targetType == typeof(Boolean);
     }
 
     /// <summary>
@@ -123,7 +144,7 @@ public static class ObjectExtensions
         if (type != typeof(string))
         {
             ret = false;
-            var methodInfo = typeof(ObjectExtensions).GetMethods().FirstOrDefault(m => m.Name == nameof(TryConvertTo) && m.IsGenericMethod);
+            var methodInfo = Array.Find(typeof(ObjectExtensions).GetMethods(), m => m.Name == nameof(TryConvertTo) && m.IsGenericMethod);
             if (methodInfo != null)
             {
                 methodInfo = methodInfo.MakeGenericMethod(type);
@@ -164,13 +185,13 @@ public static class ObjectExtensions
                 }
                 else if (source == string.Empty)
                 {
-                    ret = BindConverter.TryConvertTo<TValue>(source, CultureInfo.InvariantCulture, out val);
+                    ret = BindConverter.TryConvertTo<TValue>(source, CultureInfo.CurrentCulture, out val);
                 }
                 else
                 {
                     var isBoolean = type == typeof(bool);
                     var v = isBoolean ? (object)source.Equals("true", StringComparison.CurrentCultureIgnoreCase) : source;
-                    ret = BindConverter.TryConvertTo<TValue>(v, CultureInfo.InvariantCulture, out val);
+                    ret = BindConverter.TryConvertTo<TValue>(v, CultureInfo.CurrentCulture, out val);
                 }
             }
             catch
@@ -194,65 +215,26 @@ public static class ObjectExtensions
         _ => $"{fileSize} B"
     };
 
-    /// <summary>
-    /// 判断当前 IEditorItem 实例是否可以编辑
-    /// </summary>
-    /// <param name="item"></param>
-    /// <param name="changedType"></param>
-    /// <param name="search"></param>
-    /// <returns></returns>
-    public static bool IsEditable(this IEditorItem item, ItemChangedType changedType, bool search = false) => item.Editable
-        && !item.Readonly && changedType switch
-        {
-            ItemChangedType.Add => !item.IsReadonlyWhenAdd,
-            _ => !item.IsReadonlyWhenEdit
-        } || search;
-
-    /// <summary>
-    /// 判断当前 IEditorItem 示例是否可以编辑
-    /// </summary>
-    /// <param name="item"></param>
-    /// <param name="modelType"></param>
-    /// <param name="changedType"></param>
-    /// <param name="search"></param>
-    /// <returns></returns>
-    public static bool CanWrite(this IEditorItem item, Type modelType, ItemChangedType changedType, bool search = false) => item.CanWrite(modelType) && item.IsEditable(changedType, search);
-
-    /// <summary>
-    /// 判断模型是否可写
-    /// </summary>
-    /// <param name="item"></param>
-    /// <param name="modelType"></param>
-    /// <returns></returns>
-    public static bool CanWrite(this IEditorItem item, Type modelType)
+    internal static void Clone<TModel>(this TModel source, TModel item)
     {
-        return modelType == typeof(DynamicObject) || modelType.IsSubclassOf(typeof(DynamicObject)) || ComplexCanWrite();
-
-        bool ComplexCanWrite()
+        if (item != null)
         {
-            var ret = false;
-            var fieldName = item.GetFieldName();
-            var propertyNames = fieldName.Split('.');
-            PropertyInfo? propertyInfo = null;
-            Type? propertyType = null;
-            foreach (var name in propertyNames)
+            var type = typeof(TModel);
+
+            // 20200608 tian_teng@outlook.com 支持字段和只读属性
+            foreach (var f in type.GetFields())
             {
-                if (propertyType == null)
+                var v = f.GetValue(item);
+                f.SetValue(source, v);
+            }
+            foreach (var p in type.GetRuntimeProperties())
+            {
+                if (p.IsCanWrite())
                 {
-                    propertyInfo = modelType.GetPropertyByName(name) ?? throw new InvalidOperationException();
-                    propertyType = propertyInfo.PropertyType;
-                }
-                else
-                {
-                    propertyInfo = propertyType.GetPropertyByName(name) ?? throw new InvalidOperationException();
-                    propertyType = propertyInfo.PropertyType;
+                    var v = p.GetValue(item);
+                    p.SetValue(source, v);
                 }
             }
-            if (propertyInfo != null)
-            {
-                ret = propertyInfo.CanWrite;
-            }
-            return ret;
         }
     }
 }

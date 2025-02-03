@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -10,9 +11,9 @@ namespace BootstrapBlazor.Components;
 public interface ITableColumn : IEditorItem
 {
     /// <summary>
-    /// 获得/设置 是否允许排序 默认为 false
+    /// 获得/设置 是否允许排序 默认为 null
     /// </summary>
-    bool Sortable { get; set; }
+    bool? Sortable { get; set; }
 
     /// <summary>
     /// 获得/设置 是否为默认排序列 默认为 false
@@ -25,14 +26,14 @@ public interface ITableColumn : IEditorItem
     SortOrder DefaultSortOrder { get; set; }
 
     /// <summary>
-    /// 获得/设置 是否允许过滤数据 默认为 false
+    /// 获得/设置 是否允许过滤数据 默认为 null
     /// </summary>
-    bool Filterable { get; set; }
+    bool? Filterable { get; set; }
 
     /// <summary>
-    /// 获得/设置 是否参与搜索 默认为 false
+    /// 获得/设置 是否参与搜索 默认为 null
     /// </summary>
-    bool Searchable { get; set; }
+    bool? Searchable { get; set; }
 
     /// <summary>
     /// 获得/设置 列宽
@@ -45,19 +46,14 @@ public interface ITableColumn : IEditorItem
     bool Fixed { get; set; }
 
     /// <summary>
-    /// 获得/设置 列是否显示 默认为 true 可见的
+    /// 获得/设置 本列是否允许换行 默认为 null
     /// </summary>
-    bool Visible { get; set; }
+    bool? TextWrap { get; set; }
 
     /// <summary>
-    /// 获得/设置 本列是否允许换行 默认为 false
+    /// 获得/设置 本列文本超出省略 默认为 null
     /// </summary>
-    bool TextWrap { get; set; }
-
-    /// <summary>
-    /// 获得/设置 本列文本超出省略 默认为 false
-    /// </summary>
-    bool TextEllipsis { get; set; }
+    bool? TextEllipsis { get; set; }
 
     /// <summary>
     /// 获得/设置 是否表头允许折行 默认 false 不折行
@@ -90,9 +86,9 @@ public interface ITableColumn : IEditorItem
     BreakPoint ShownWithBreakPoint { get; set; }
 
     /// <summary>
-    /// 获得/设置 是否可以拷贝列 默认 false 不可以
+    /// 获得/设置 是否可以拷贝列 默认 null 不可以
     /// </summary>
-    bool ShowCopyColumn { get; set; }
+    bool? ShowCopyColumn { get; set; }
 
     /// <summary>
     /// 获得/设置 显示模板
@@ -115,6 +111,11 @@ public interface ITableColumn : IEditorItem
     RenderFragment<ITableColumn>? HeaderTemplate { get; set; }
 
     /// <summary>
+    /// 获得/设置 工具栏模板 默认 null
+    /// </summary>
+    RenderFragment<ITableColumn>? ToolboxTemplate { get; set; }
+
+    /// <summary>
     /// 获得/设置 列过滤器
     /// </summary>
     IFilter? Filter { get; set; }
@@ -125,22 +126,72 @@ public interface ITableColumn : IEditorItem
     string? FormatString { get; set; }
 
     /// <summary>
-    /// 获得/设置 列格式化回调委托
+    /// 获得/设置 列格式化回调委托 <see cref="TableColumnContext{TItem, TValue}"/>
     /// </summary>
-    Func<object?, Task<string>>? Formatter { get; set; }
+    Func<object?, Task<string?>>? Formatter { get; set; }
 
     /// <summary>
-    /// 获得/设置 文字对齐方式 默认为 Alignment.None
+    /// 获得/设置 文字对齐方式 默认为 null 使用 Alignment.None
     /// </summary>
-    Alignment Align { get; set; }
+    Alignment? Align { get; set; }
 
     /// <summary>
-    /// 字段鼠标悬停提示
+    /// 获得/设置 字段鼠标悬停提示 默认为 null 使用 false 值
     /// </summary>
-    bool ShowTips { get; set; }
+    bool? ShowTips { get; set; }
+
+    /// <summary>
+    /// 获得/设置 鼠标悬停提示自定义内容回调委托 默认 null 使用当前值
+    /// </summary>
+    Func<object?, Task<string?>>? GetTooltipTextCallback { get; set; }
 
     /// <summary>
     /// 获得/设置 单元格回调方法
     /// </summary>
     Action<TableCellArgs>? OnCellRender { get; set; }
+
+    /// <summary>
+    /// 获得/设置 是否为 MarkupString 默认 false
+    /// </summary>
+    bool IsMarkupString { get; set; }
+
+    /// <summary>
+    /// 获得/设置 新建时是否为必填项 默认为 null
+    /// </summary>
+    bool? IsRequiredWhenAdd { get; set; }
+
+    /// <summary>
+    /// 获得/设置 编辑时是否为必填项 默认为 null
+    /// </summary>
+    bool? IsRequiredWhenEdit { get; set; }
+
+    /// <summary>
+    /// 获得/设置 新建时此列只读 默认为 null 使用 <see cref="IEditorItem.Readonly"/> 值
+    /// </summary>
+    bool? IsReadonlyWhenAdd { get; set; }
+
+    /// <summary>
+    /// 获得/设置 编辑时此列只读 默认为 null 使用 <see cref="IEditorItem.Readonly"/> 值
+    /// </summary>
+    bool? IsReadonlyWhenEdit { get; set; }
+
+    /// <summary>
+    /// 获得/设置 当前编辑项是否显示 默认为 null 未设置时为 true
+    /// </summary>
+    bool? Visible { get; set; }
+
+    /// <summary>
+    /// 获得/设置 新建时是否此列显示  默认为 null 使用 <see cref="Visible"/> 值
+    /// </summary>
+    bool? IsVisibleWhenAdd { get; set; }
+
+    /// <summary>
+    /// 获得/设置 编辑时是否此列显示  默认为 null 使用 <see cref="Visible"/> 值
+    /// </summary>
+    bool? IsVisibleWhenEdit { get; set; }
+
+    /// <summary>
+    /// 获得/设置 自定义搜索逻辑
+    /// </summary>
+    Func<ITableColumn, string?, SearchFilterAction>? CustomSearch { get; set; }
 }

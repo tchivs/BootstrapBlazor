@@ -1,11 +1,12 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// ITableFitler 接口
+/// IFilterAction 接口
 /// </summary>
 public interface IFilterAction
 {
@@ -13,7 +14,7 @@ public interface IFilterAction
     /// 获得 IFilter 实例中的过滤条件集合
     /// </summary>
     /// <returns></returns>
-    IEnumerable<FilterKeyValueAction> GetFilterConditions();
+    FilterKeyValueAction GetFilterConditions();
 
     /// <summary>
     /// 重置过滤条件方法
@@ -23,5 +24,5 @@ public interface IFilterAction
     /// <summary>
     /// Override existing filter conditions
     /// </summary>
-    Task SetFilterConditionsAsync(IEnumerable<FilterKeyValueAction> conditions);
+    Task SetFilterConditionsAsync(FilterKeyValueAction conditions);
 }

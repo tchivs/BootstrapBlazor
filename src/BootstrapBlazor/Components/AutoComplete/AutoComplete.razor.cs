@@ -1,8 +1,8 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Localization;
 
 namespace BootstrapBlazor.Components;
@@ -10,32 +10,14 @@ namespace BootstrapBlazor.Components;
 /// <summary>
 /// AutoComplete 组件
 /// </summary>
-[BootstrapModuleAutoLoader("AutoComplete/AutoComplete.razor.js", JSObjectReference = true)]
 public partial class AutoComplete
 {
-    private bool IsLoading { get; set; }
-
-    private bool IsShown { get; set; }
-
     /// <summary>
     /// 获得 组件样式
     /// </summary>
-    protected virtual string? ClassString => CssBuilder.Default("auto-complete")
-        .AddClass("is-loading", IsLoading)
+    private string? ClassString => CssBuilder.Default("auto-complete")
+        .AddClassFromAttributes(AdditionalAttributes)
         .Build();
-
-    /// <summary>
-    /// Dropdown Menu 下拉菜单样式
-    /// </summary>
-    protected string? DropdownMenuClassString => CssBuilder.Default("dropdown-menu")
-        .AddClass("show", IsShown)
-        .Build();
-
-    /// <summary>
-    /// 获得 最终候选数据源
-    /// </summary>
-    [NotNull]
-    protected List<string>? FilterItems { get; private set; }
 
     /// <summary>
     /// 获得/设置 通过输入字符串获得匹配数据集合
@@ -45,11 +27,22 @@ public partial class AutoComplete
     public IEnumerable<string>? Items { get; set; }
 
     /// <summary>
-    /// 获得/设置 无匹配数据时显示提示信息 默认提示"无匹配数据"
+    /// 获得/设置 自定义集合过滤规则 默认 null
     /// </summary>
     [Parameter]
-    [NotNull]
-    public string? NoDataTip { get; set; }
+    public Func<string, Task<IEnumerable<string>>>? OnCustomFilter { get; set; }
+
+    /// <summary>
+    /// 获得/设置 图标
+    /// </summary>
+    [Parameter]
+    public string? Icon { get; set; }
+
+    /// <summary>
+    /// 获得/设置 加载图标
+    /// </summary>
+    [Parameter]
+    public string? LoadingIcon { get; set; }
 
     /// <summary>
     /// 获得/设置 匹配数据时显示的数量
@@ -62,7 +55,7 @@ public partial class AutoComplete
     /// 获得/设置 是否开启模糊查询，默认为 false
     /// </summary>
     [Parameter]
-    public bool IsLikeMatch { get; set; } = false;
+    public bool IsLikeMatch { get; set; }
 
     /// <summary>
     /// 获得/设置 匹配时是否忽略大小写，默认为 true
@@ -71,52 +64,16 @@ public partial class AutoComplete
     public bool IgnoreCase { get; set; } = true;
 
     /// <summary>
-    /// 获得/设置 自定义集合过滤规则
-    /// </summary>
-    [Parameter]
-    public Func<string, Task<IEnumerable<string>>>? OnCustomFilter { get; set; }
-
-    /// <summary>
-    /// 获得/设置 下拉菜单选择回调方法 默认 null
-    /// </summary>
-    [Parameter]
-    public Func<string, Task>? OnSelectedItemChanged { get; set; }
-
-    /// <summary>
-    /// 获得/设置 防抖时间 默认为 0 即不开启
-    /// </summary>
-    [Parameter]
-    public int Debounce { get; set; }
-
-    /// <summary>
-    /// 获得/设置 是否跳过 Enter 按键处理 默认 false
-    /// </summary>
-    [Parameter]
-    public bool SkipEnter { get; set; }
-
-    /// <summary>
-    /// 获得/设置 是否跳过 Esc 按键处理 默认 false
-    /// </summary>
-    [Parameter]
-    public bool SkipEsc { get; set; }
-
-    /// <summary>
     /// 获得/设置 获得焦点时是否展开下拉候选菜单 默认 true
     /// </summary>
     [Parameter]
     public bool ShowDropdownListOnFocus { get; set; } = true;
 
     /// <summary>
-    /// 获得/设置 候选项模板 默认 null
+    /// 获得/设置 是否显示无匹配数据选项 默认 true 显示
     /// </summary>
     [Parameter]
-    public RenderFragment<string>? ItemTemplate { get; set; }
-
-    /// <summary>
-    /// 图标
-    /// </summary>
-    [Parameter]
-    public string? Icon { get; set; }
+    public bool ShowNoDataTip { get; set; } = true;
 
     /// <summary>
     /// IStringLocalizer 服务实例
@@ -125,37 +82,19 @@ public partial class AutoComplete
     [NotNull]
     private IStringLocalizer<AutoComplete>? Localizer { get; set; }
 
-    [Inject]
-    [NotNull]
-    private IIconTheme? IconTheme { get; set; }
-
-    private string CurrentSelectedItem { get; set; } = "";
-
     /// <summary>
-    /// 获得/设置 组件 Element 实例
+    /// 获得 获得焦点自动显示下拉框设置字符串
     /// </summary>
-    protected ElementReference AutoCompleteElement { get; set; }
+    private string? ShowDropdownListOnFocusString => ShowDropdownListOnFocus ? "true" : null;
+
+    private List<string>? _filterItems;
 
     /// <summary>
-    /// CurrentItemIndex 当前选中项索引
-    /// </summary>
-    protected int? CurrentItemIndex { get; set; }
-
-    private string? IconString => CssBuilder.Default("ac-loading")
-        .AddClass(Icon, !string.IsNullOrEmpty(Icon))
-        .Build();
-
-    /// <summary>
-    /// OnInitialized 方法
+    /// <inheritdoc/>
     /// </summary>
     protected override void OnInitialized()
     {
         base.OnInitialized();
-
-        NoDataTip ??= Localizer[nameof(NoDataTip)];
-        PlaceHolder ??= Localizer[nameof(PlaceHolder)];
-        Items ??= Enumerable.Empty<string>();
-        FilterItems ??= new List<string>();
 
         SkipRegisterEnterEscJSInvoke = true;
     }
@@ -166,47 +105,19 @@ public partial class AutoComplete
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
+
+        NoDataTip ??= Localizer[nameof(NoDataTip)];
+        PlaceHolder ??= Localizer[nameof(PlaceHolder)];
         Icon ??= IconTheme.GetIconByKey(ComponentIcons.AutoCompleteIcon);
-    }
+        LoadingIcon ??= IconTheme.GetIconByKey(ComponentIcons.LoadingIcon);
 
-    /// <summary>
-    /// firstRender
-    /// </summary>
-    /// <param name="firstRender"></param>
-    /// <returns></returns>
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        await base.OnAfterRenderAsync(firstRender);
-
-        if (CurrentItemIndex.HasValue)
-        {
-            await InvokeVoidAsync("autoScroll", AutoCompleteElement, CurrentItemIndex.Value);
-        }
-
-        if (firstRender)
-        {
-            await RegisterComposition();
-
-            if (Debounce > 0)
-            {
-                await InvokeVoidAsync("debounce", Id, Debounce);
-            }
-        }
-    }
-
-    /// <summary>
-    /// OnBlur 方法
-    /// </summary>
-    protected void OnBlur()
-    {
-        CurrentSelectedItem = "";
-        IsShown = false;
+        Items ??= [];
     }
 
     /// <summary>
     /// 鼠标点击候选项时回调此方法
     /// </summary>
-    protected virtual async Task OnClickItem(string val)
+    private async Task OnClickItem(string val)
     {
         CurrentValue = val;
         if (OnSelectedItemChanged != null)
@@ -215,119 +126,52 @@ public partial class AutoComplete
         }
     }
 
-    /// <summary>
-    /// OnFocus 方法
-    /// </summary>
-    /// <param name="args"></param>
-    /// <returns></returns>
-    protected virtual async Task OnFocus(FocusEventArgs args)
-    {
-        if (ShowDropdownListOnFocus)
-        {
-            await OnKeyUp(new KeyboardEventArgs());
-        }
-    }
+    private List<string> Rows => _filterItems ?? Items.ToList();
 
     /// <summary>
-    /// OnKeyUp 方法
-    /// </summary>
-    /// <param name="args"></param>
-    /// <returns></returns>
-    protected virtual async Task OnKeyUp(KeyboardEventArgs args)
-    {
-        if (!IsLoading)
-        {
-            IsLoading = true;
-            if (OnCustomFilter != null)
-            {
-                var items = await OnCustomFilter(CurrentValueAsString);
-                FilterItems = items.ToList();
-            }
-            else
-            {
-                var comparison = IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-                var items = IsLikeMatch ?
-                    Items.Where(s => s.Contains(CurrentValueAsString, comparison)) :
-                    Items.Where(s => s.StartsWith(CurrentValueAsString, comparison));
-                FilterItems = DisplayCount == null ? items.ToList() : items.Take(DisplayCount.Value).ToList();
-            }
-            IsLoading = false;
-        }
-
-        IsShown = true;
-
-        var source = FilterItems;
-        if (source.Any())
-        {
-            // 键盘向上选择
-            if (args.Key == "ArrowUp")
-            {
-                var index = source.IndexOf(CurrentSelectedItem) - 1;
-                if (index < 0)
-                {
-                    index = source.Count - 1;
-                }
-                CurrentSelectedItem = source[index];
-                CurrentItemIndex = index;
-            }
-            else if (args.Key == "ArrowDown")
-            {
-                var index = source.IndexOf(CurrentSelectedItem) + 1;
-                if (index > source.Count - 1)
-                {
-                    index = 0;
-                }
-                CurrentSelectedItem = source[index];
-                CurrentItemIndex = index;
-            }
-            else if (args.Key == "Escape")
-            {
-                OnBlur();
-                if (!SkipEsc && OnEscAsync != null)
-                {
-                    await OnEscAsync(Value);
-                }
-            }
-            else if (args.Key == "Enter")
-            {
-                if (!string.IsNullOrEmpty(CurrentSelectedItem))
-                {
-                    CurrentValueAsString = CurrentSelectedItem;
-                    if (OnSelectedItemChanged != null)
-                    {
-                        await OnSelectedItemChanged(CurrentSelectedItem);
-                    }
-                }
-
-                OnBlur();
-                if (!SkipEnter && OnEnterAsync != null)
-                {
-                    await OnEnterAsync(Value);
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    ///
+    /// TriggerFilter 方法
     /// </summary>
     /// <param name="val"></param>
     [JSInvokable]
-    public void TriggerOnChange(string val)
+    public override async Task TriggerFilter(string val)
     {
-        CurrentValueAsString = val;
+        if (OnCustomFilter != null)
+        {
+            var items = await OnCustomFilter(val);
+            _filterItems = items.ToList();
+        }
+        else if (string.IsNullOrEmpty(val))
+        {
+            _filterItems = Items.ToList();
+        }
+        else
+        {
+            var comparison = IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            var items = IsLikeMatch
+                ? Items.Where(s => s.Contains(val, comparison))
+                : Items.Where(s => s.StartsWith(val, comparison));
+            _filterItems = items.ToList();
+        }
+
+        if (DisplayCount != null)
+        {
+            _filterItems = _filterItems.Take(DisplayCount.Value).ToList();
+        }
+        StateHasChanged();
     }
 
     /// <summary>
-    /// 注册汉字多次触发问题脚本
+    /// TriggerChange 方法
     /// </summary>
-    /// <returns></returns>
-    protected virtual async Task RegisterComposition()
+    /// <param name="val"></param>
+    [JSInvokable]
+    public override Task TriggerChange(string val)
     {
-        // 汉字多次触发问题
-        if (ValidateForm != null)
+        CurrentValue = val;
+        if (!ValueChanged.HasDelegate)
         {
-            await InvokeVoidAsync("composition", Id, Interop, nameof(TriggerOnChange));
+            StateHasChanged();
         }
+        return Task.CompletedTask;
     }
 }

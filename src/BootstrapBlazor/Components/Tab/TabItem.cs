@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -35,6 +36,12 @@ public class TabItem : ComponentBase
     public bool IsActive { get; set; }
 
     /// <summary>
+    /// 获得/设置 当前状态是否 禁用 默认 false
+    /// </summary>
+    [Parameter]
+    public bool IsDisabled { get; set; }
+
+    /// <summary>
     /// 获得/设置 当前 TabItem 是否可关闭 默认为 true 可关闭
     /// </summary>
     [Parameter]
@@ -47,10 +54,22 @@ public class TabItem : ComponentBase
     public bool AlwaysLoad { get; set; }
 
     /// <summary>
+    /// 获得/设置 自定义样式名
+    /// </summary>
+    [Parameter]
+    public string? CssClass { get; set; }
+
+    /// <summary>
     /// 获得/设置 图标字符串
     /// </summary>
     [Parameter]
     public string? Icon { get; set; }
+
+    /// <summary>
+    /// 获得/设置 是否显示全屏按钮 默认 true
+    /// </summary>
+    [Parameter]
+    public bool ShowFullScreen { get; set; } = true;
 
     /// <summary>
     /// 获得/设置 组件内容
@@ -94,7 +113,22 @@ public class TabItem : ComponentBase
     /// 设置是否被选中方法
     /// </summary>
     /// <param name="active"></param>
-    public virtual void SetActive(bool active) => IsActive = active;
+    public void SetActive(bool active) => IsActive = active;
+
+    /// <summary>
+    /// 设置是否被禁用
+    /// </summary>
+    /// <param name="disabled"></param>
+    public void SetDisabled(bool disabled)
+    {
+        TabSet?.SetDisabledItem(this, disabled);
+    }
+
+    /// <summary>
+    /// 设置是否被禁用
+    /// </summary>
+    /// <param name="disabled"></param>
+    internal void SetDisabledWithoutRender(bool disabled) => IsDisabled = disabled;
 
     /// <summary>
     /// 重新设置标签文字等参数
@@ -132,7 +166,8 @@ public class TabItem : ComponentBase
         {
             parameters[nameof(Url)] = url?.ToString()?.TrimStart('/') ?? "";
         }
-        _ = item.SetParametersAsync(ParameterView.FromDictionary(parameters!));
+        var pv = ParameterView.FromDictionary(parameters);
+        pv.SetParameterProperties(item);
         return item;
     }
 }

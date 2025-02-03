@@ -1,23 +1,23 @@
 <h1 align="center">Bootstrap Blazor Component</h1>
 
 <div align="center">
-<h2>A set of enterprise-class UI components based on Bootstrap and Blazor.</h2>
+<h2>Bootstrap Blazor is an enterprise-level UI component library based on Bootstrap and Blazor.</h2>
 
-[![Security Status](https://www.murphysec.com/platform3/v3/badge/1619783039836532736.svg)](https://github.com/ArgoZhang/BootstrapBlazor/blob/main/LICENSE)
-
-[![oscs](https://www.oscs1024.com/platform/badge/murphysecurity/murphysec.svg)](https://github.com/ArgoZhang/BootstrapBlazor/blob/main/LICENSE)
-[![License](https://img.shields.io/github/license/argozhang/bootstrapblazor.svg?logo=git&logoColor=red)](https://github.com/ArgoZhang/BootstrapBlazor/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/dotnetcore/BootstrapBlazor.svg?logo=git&logoColor=red)](https://github.com/dotnetcore/BootstrapBlazor/blob/main/LICENSE)
 [![Nuget](https://img.shields.io/nuget/v/BootstrapBlazor.svg?color=red&logo=nuget&logoColor=green)](https://www.nuget.org/packages/BootstrapBlazor/)
 [![Nuget](https://img.shields.io/nuget/dt/BootstrapBlazor.svg?logo=nuget&logoColor=green)](https://www.nuget.org/packages/BootstrapBlazor/)
-[![Repo Size](https://img.shields.io/github/repo-size/ArgoZhang/BootstrapBlazor.svg?logo=github&logoColor=green&label=repo)](https://github.com/ArgoZhang/BootstrapBlazor)
-[![Commit Date](https://img.shields.io/github/last-commit/ArgoZhang/BootstrapBlazor/main.svg?logo=github&logoColor=green&label=commit)](https://github.com/ArgoZhang/BootstrapBlazor)
-[![Github build](https://img.shields.io/github/actions/workflow/status/ArgoZhang/BootstrapBlazor/build.yml?branch=main&?label=main&logo=github)](https://github.com/ArgoZhang/BootstrapBlazor/actions?query=workflow%3A%22Build+Project%22+branch%3Amain)
+[![Repo Size](https://img.shields.io/github/repo-size/dotnetcore/BootstrapBlazor.svg?logo=github&logoColor=green&label=repo)](https://github.com/dotnetcore/BootstrapBlazor)
+[![Commit Date](https://img.shields.io/github/last-commit/dotnetcore/BootstrapBlazor/main.svg?logo=github&logoColor=green&label=commit)](https://github.com/dotnetcore/BootstrapBlazor)
+[![Github build](https://img.shields.io/github/actions/workflow/status/dotnetcore/BootstrapBlazor/build.yml?branch=main&?label=main&logo=github)](https://github.com/dotnetcore/BootstrapBlazor/actions?query=workflow%3A%22Build+Project%22+branch%3Amain)
 [![codecov](https://codecov.io/gh/dotnetcore/BootstrapBlazor/branch/main/graph/badge.svg?token=5SXIWHXZC3)](https://codecov.io/gh/dotnetcore/BootstrapBlazor)
 </div>
 
 English | <a href="README.zh-CN.md">中文</a>
 
 ---
+## .NET Foundation
+[<img align="right" src="https://github.com/dotnet-foundation/swag/blob/main/logo/dotnetfoundation_v4.png?raw=true" width="68px" />](https://dotnetfoundation.org/projects/project-detail/bootstrap-blazor)
+<p>This project is part of the <a href="https://www.dotnetfoundation.org/">.NET Foundation</a> and operates under their <a href="https://www.dotnetfoundation.org/code-of-conduct">code of conduct</a>. </p>
 
 ## Features
 - Enterprise-class UI designed for web applications.
@@ -124,7 +124,7 @@ To start the wizard, use either of the following approaches
 ## Supported browsers
 
 ![chrome](https://img.shields.io/badge/chrome->%3D57-success.svg?logo=google%20chrome&logoColor=red)
-![firefox](https://img.shields.io/badge/firefox->522-success.svg?logo=mozilla%20firefox&logoColor=red)
+![firefox](https://img.shields.io/badge/firefox->522-success.svg?logo=firefox%20browser&logoColor=red)
 ![edge](https://img.shields.io/badge/edge->%3D16-success.svg?logo=microsoft%20edge&logoColor=blue)
 ![ie](https://img.shields.io/badge/ie->%3D11-success.svg?logo=internet%20explorer&logoColor=blue)
 ![Safari](https://img.shields.io/badge/safari->%3D14-success.svg?logo=safari&logoColor=blue)
@@ -172,8 +172,17 @@ To start the wizard, use either of the following approaches
 3. Commit
 4. Create Pull Request
 
+## Code of Conduct
+
+This project has adopted the code of conduct defined by the Contributor Covenant to clarify expected behavior in our community.
+For more information see the [.NET Foundation Code of Conduct](https://dotnetfoundation.org/code-of-conduct).
+
 ## Donate
 
 If this project is helpful to you, please scan the QR code below for a cup of coffee.
 
 <img src="https://raw.githubusercontent.com/ArgoZhang/Images/master/Donate/BarCode%402x.png" width="382px;" />
+
+## Sponsor
+Thanks to [JetBrains](https://jb.gg/OpenSourceSupport) for providing free open source license
+<img src="https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg" width="100px" align="right" />

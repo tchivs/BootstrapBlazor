@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -20,7 +21,7 @@ public static class SwalExtensions
     {
         option.IsConfirm = true;
         await service.Show(option, swal);
-        return await option.ReturnTask.Task;
+        return await option.ConfirmContext.ConfirmTask.Task;
     }
 
     /// <summary>
@@ -38,7 +39,7 @@ public static class SwalExtensions
         {
             if (option.IsConfirm)
             {
-                option.ReturnTask.TrySetResult(false);
+                option.ConfirmContext.Value = false;
             }
             if (option.OnCloseAsync != null)
             {
@@ -49,7 +50,7 @@ public static class SwalExtensions
         {
             if (option.IsConfirm)
             {
-                option.ReturnTask.TrySetResult(true);
+                option.ConfirmContext.Value = true;
             }
             if (option.OnConfirmAsync != null)
             {

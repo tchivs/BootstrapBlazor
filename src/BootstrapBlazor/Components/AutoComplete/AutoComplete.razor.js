@@ -1,56 +1,152 @@
-﻿import { getHeight } from "../../modules/utility.js"
-import { handleKeyup, select, selectAllByFocus, selectAllByEnter } from '../Input/BootstrapInput.razor.js'
-import Data from '../../modules/data.js'
-import Debounce from '../../modules/debounce.js'
+﻿import { debounce, getHeight } from "../../modules/utility.js"
+import { handleKeyUp, select, selectAllByFocus, selectAllByEnter } from "../Input/BootstrapInput.razor.js"
+import Data from "../../modules/data.js"
 import EventHandler from "../../modules/event-handler.js"
-import Input from '../../modules/input.js'
+import Input from "../../modules/input.js"
+import Popover from "../../modules/base-popover.js"
 
-export function init(id) {
+if (window.BootstrapBlazor === void 0) {
+    window.BootstrapBlazor = {};
+}
+
+export function init(id, invoke) {
     const el = document.getElementById(id)
-    var ac = { el }
-    Data.set(id, ac)
-}
-
-export function autoScroll(el, index) {
     const menu = el.querySelector('.dropdown-menu')
-    const styles = getComputedStyle(menu)
-    const maxHeight = parseInt(styles.maxHeight) / 2
-    const itemHeight = getHeight(menu.querySelector('li'))
-    const height = itemHeight * index
-    const count = Math.floor(maxHeight / itemHeight)
+    const input = document.getElementById(`${id}_input`)
+    const ac = { el, invoke, menu, input }
+    Data.set(id, ac)
 
-    const active = menu.querySelector('.active')
-    if (active) {
-        active.classList.remove('active')
+    const isPopover = input.getAttribute('data-bs-toggle') === 'bb.dropdown';
+    if (isPopover) {
+        ac.popover = Popover.init(el, { toggleClass: '[data-bs-toggle="bb.dropdown"]' });
     }
 
-    var len = menu.children.length
-    if (index < len) {
-        menu.children[index].classList.add('active')
-    }
-
-    if (height > maxHeight) {
-        menu.scrollTop = itemHeight * (index > count ? index - count : index)
-    }
-    else if (index <= count) {
-        menu.scrollTop = 0
-    }
-}
-
-export function debounce(id, ms) {
-    const ac = Data.get(id)
-    if (ac) {
+    // debounce
+    const duration = parseInt(input.getAttribute('data-bb-debounce') || '0');
+    if (duration > 0) {
         ac.debounce = true
+        EventHandler.on(input, 'keyup', debounce(e => {
+            handlerKeyup(ac, e);
+        }, duration, e => {
+            return ['ArrowUp', 'ArrowDown', 'Escape', 'Enter', 'NumpadEnter'].indexOf(e.key) > -1
+        }))
     }
-    Debounce.init(id, ms)
+    else {
+        EventHandler.on(input, 'keyup', e => {
+            handlerKeyup(ac, e);
+        })
+    }
+
+    EventHandler.on(input, 'focus', e => {
+        const showDropdownOnFocus = input.getAttribute('data-bb-auto-dropdown-focus') === 'true';
+        if (showDropdownOnFocus) {
+            if (isPopover === false) {
+                el.classList.add('show');
+            }
+        }
+    });
+
+    EventHandler.on(menu, 'click', e => {
+        el.classList.remove('show');
+        if (el.triggerEnter !== true) {
+            invoke.invokeMethodAsync('TriggerBlur');
+        }
+        delete el.triggerEnter;
+    });
+
+    EventHandler.on(input, 'change', e => {
+        invoke.invokeMethodAsync('TriggerChange', e.target.value);
+    });
+
+    Input.composition(input, async v => {
+        const useInput = input.getAttribute('data-bb-input') !== 'false';
+        if (isPopover === false && useInput) {
+            el.classList.add('show');
+        }
+
+        el.classList.add('is-loading');
+        await invoke.invokeMethodAsync('TriggerFilter', v);
+        el.classList.remove('is-loading');
+    });
+
+    if (window.BootstrapBlazor.AutoComplete === void 0) {
+        window.BootstrapBlazor.AutoComplete = {
+            hooked: false,
+            registerCloseDropdownHandler: function () {
+                if (this.hooked === false) {
+                    this.hooked = true;
+
+                    EventHandler.on(document, 'click', e => {
+                        [...document.querySelectorAll('.auto-complete.show')].forEach(a => {
+                            const ac = e.target.closest('.auto-complete');
+                            if (ac === a) {
+                                return;
+                            }
+
+                            const el = a.querySelector('[data-bs-toggle="bb.dropdown"]');
+                            if (el === null) {
+                                a.classList.remove('show');
+                            }
+                        });
+                    });
+                }
+            }
+        }
+    }
+
+    window.BootstrapBlazor.AutoComplete.registerCloseDropdownHandler();
 }
 
-export function composition(id, invoke, method) {
+const handlerKeyup = (ac, e) => {
+    const key = e.key;
+    const { el, input, menu } = ac;
+    if (key === 'Enter' || key === 'NumpadEnter') {
+        const skipEnter = el.getAttribute('data-bb-skip-enter') === 'true';
+        if (!skipEnter) {
+            const current = menu.querySelector('.active');
+            if (current !== null) {
+                el.triggerEnter = true;
+                current.click();
+            }
+        }
+    }
+    else if (key === 'Escape') {
+        const skipEsc = el.getAttribute('data-bb-skip-esc') === 'true';
+        if (skipEsc === false) {
+            EventHandler.trigger(menu, 'click');
+        }
+    }
+    else if (key === 'ArrowUp' || key === 'ArrowDown') {
+        el.classList.add('show');
+        const items = [...menu.querySelectorAll('.dropdown-item')];
+        let current = menu.querySelector('.active');
+        if (current !== null) {
+            current.classList.remove('active');
+        }
+        let index = current === null ? -1 : items.indexOf(current);
+        index = key === 'ArrowUp' ? index - 1 : index + 1;
+        if (index < 0) {
+            index = items.length - 1;
+        }
+        else if (index > items.length - 1) {
+            index = 0;
+        }
+        current = items[index];
+        current.classList.add('active');
+        scrollIntoView(el, current);
+    }
+}
+
+export function showList(id) {
     const ac = Data.get(id)
     if (ac) {
-        ac.composition = true
+        if (ac.popover) {
+            ac.popover.show();
+        }
+        else {
+            ac.el.classList.add('show');
+        }
     }
-    Input.composition(id, invoke, method)
 }
 
 export function dispose(id) {
@@ -58,17 +154,22 @@ export function dispose(id) {
     Data.remove(id)
 
     if (ac) {
-        if (ac.el) {
-            EventHandler.off(ac.el, 'keyup')
-            EventHandler.off(ac.el, 'focus')
+        const { popover, input, menu } = ac;
+        if (popover) {
+            Popover.dispose(popover)
+            if (input) {
+                EventHandler.off(input, 'focus')
+            }
         }
-        if (ac.composition) {
-            Input.dispose(id)
-        }
-        if (ac.debounce) {
-            Debounce.dispose(id)
-        }
+        EventHandler.off(input, 'keyup');
+        EventHandler.off(menu, 'click');
+        Input.dispose(input);
     }
 }
 
-export { handleKeyup, select, selectAllByFocus, selectAllByEnter }
+const scrollIntoView = (el, item) => {
+    const behavior = el.getAttribute('data-bb-scroll-behavior') ?? 'smooth';
+    item.scrollIntoView({ behavior: behavior, block: "nearest", inline: "start" });
+}
+
+export { handleKeyUp, select, selectAllByFocus, selectAllByEnter }

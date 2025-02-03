@@ -1,11 +1,13 @@
 # Bootstrap Blazor Component
 
-## A set of enterprise-class UI components based on Bootstrap and Blazor.
+## an enterprise-level UI component library based on Bootstrap and Blazor.
 
-[![License](https://img.shields.io/github/license/argozhang/bootstrapblazor.svg?logo=git&logoColor=red)](https://github.com/ArgoZhang/BootstrapBlazor/blob/main/LICENSE)
-[![Github build](https://img.shields.io/github/actions/workflow/status/ArgoZhang/BootstrapBlazor/build.yml?branch=main&?label=main&logo=github)](https://github.com/ArgoZhang/BootstrapBlazor/actions?query=workflow%3A%22Build+Project%22+branch%3Amain)
-[![Repo Size](https://img.shields.io/github/repo-size/ArgoZhang/BootstrapBlazor.svg?logo=github&logoColor=green&label=repo)](https://github.com/ArgoZhang/BootstrapBlazor)
-[![Commit Date](https://img.shields.io/github/last-commit/ArgoZhang/BootstrapBlazor/main.svg?logo=github&logoColor=green&label=commit)](https://github.com/ArgoZhang/BootstrapBlazor)
+<h4>This project is part of the <a href="https://www.dotnetfoundation.org/">.NET Foundation</a> and operates under their <a href="https://www.dotnetfoundation.org/code-of-conduct">code of conduct</a>. </h4>
+
+[![License](https://img.shields.io/github/license/dotnetcore/bootstrapblazor.svg?logo=git&logoColor=red)](https://github.com/dotnetcore/BootstrapBlazor/blob/main/LICENSE)
+[![Github build](https://img.shields.io/github/actions/workflow/status/dotnetcore/BootstrapBlazor/build.yml?branch=main&?label=main&logo=github)](https://github.com/dotnetcore/BootstrapBlazor/actions?query=workflow%3A%22Build+Project%22+branch%3Amain)
+[![Repo Size](https://img.shields.io/github/repo-size/dotnetcore/BootstrapBlazor.svg?logo=github&logoColor=green&label=repo)](https://github.com/dotnetcore/BootstrapBlazor)
+[![Commit Date](https://img.shields.io/github/last-commit/dotnetcore/BootstrapBlazor/main.svg?logo=github&logoColor=green&label=commit)](https://github.com/dotnetcore/BootstrapBlazor)
 [![codecov](https://codecov.io/gh/dotnetcore/BootstrapBlazor/branch/main/graph/badge.svg?token=5SXIWHXZC3)](https://codecov.io/gh/dotnetcore/BootstrapBlazor)
 
 ---
@@ -21,13 +23,12 @@
 - Seamless integration with existing ASP.NET Core MVC and Razor Pages projects.
 
 ## Online Examples
-[![website](https://img.shields.io/badge/China-https://www.blazor.zone-success.svg?color=red&logo=buzzfeed&logoColor=red)](https://www.blazor.zone)
-[![website](https://img.shields.io/badge/Github-https://argozhang.github.io-success.svg?logo=buzzfeed&logoColor=green)](https://argozhang.github.io)
+[![website](https://img.shields.io/badge/China-https://www.blazor.zone-success.svg?color=blue&logo=buzzfeed&logoColor=green)](https://www.blazor.zone)
 
 ## Installation Guide
 
-- Install .net core sdk [Offical website](https://dotnet.microsoft.com/download)
-- Install Visual Studio 2019 lastest [Offical website](https://visualstudio.microsoft.com/vs/getting-started/)
+- Install .net core sdk [Official website](https://dotnet.microsoft.com/download?wt.mc_id=DT-MVP-5004174)
+- Install Visual Studio latest [Official website](https://visualstudio.microsoft.com/vs/getting-started?wt.mc_id=DT-MVP-5004174)
 
 ```shell
 git clone https://github.com/dotnetcore/BootstrapBlazor.git
@@ -49,7 +50,7 @@ dotnet run
 
 1. Download Project Template
 
-Microsoft Market [link](https://marketplace.visualstudio.com/items?itemName=Longbow.BootstrapBlazorUITemplate)
+Microsoft Market [link](https://marketplace.visualstudio.com/items?itemName=Longbow.BootstrapBlazorUITemplate&wt.mc_id=DT-MVP-5004174)
 
 2. Double Click **BootstrapBlazor.UITemplate.vsix**
 
@@ -72,30 +73,17 @@ Microsoft Market [link](https://marketplace.visualstudio.com/items?itemName=Long
 </head>
 <body>
     . . .
-    <script src="_framework/blazor.server.js"></script>
     <script src="_content/BootstrapBlazor/js/bootstrap.blazor.bundle.min.js"></script>
 </body>
 </html>
 ```
 
-3. Open the `~/Startup.cs` file in the and register the `Bootstrap Blazor` service:
+3. Open the `Program.cs` file in the and register the `Bootstrap Blazor` service:
 
  **C#**
 
 ```
-namespace BootstrapBlazorAppName
-{
-    public class Startup
-    {
-        public void ConfigureServices(IServiceCollection services)
-        {
-            //more code may be present here
-            services.AddBootstrapBlazor();
-        }
-
-        //more code may be present here
-    }
-}
+builder.Services.AddBootstrapBlazorServices();
 ```
 
 ## Visual Studio Integration
@@ -117,3 +105,12 @@ To start the wizard, use either of the following approaches
 - Click File > New > Project.
 - Find and click the C# Blazor Application option (you can use the search, or filter by Blazor templates).
 - Follow the wizard.
+
+## Code of conduct
+
+This project has adopted the code of conduct defined by the Contributor Covenant to clarify expected behavior in our community.
+For more information see the [.NET Foundation Code of Conduct](https://dotnetfoundation.org/code-of-conduct).
+
+## .NET Foundation
+
+This project is supported by the [.NET Foundation](https://dotnetfoundation.org).

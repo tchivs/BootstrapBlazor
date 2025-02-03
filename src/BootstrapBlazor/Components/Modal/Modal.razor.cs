@@ -1,6 +1,9 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
+
+using System.Collections.Concurrent;
 
 namespace BootstrapBlazor.Components;
 
@@ -20,6 +23,8 @@ public partial class Modal
     /// 获得 ModalDialog 集合
     /// </summary>
     protected List<ModalDialog> Dialogs { get; } = new(8);
+
+    private readonly ConcurrentDictionary<IComponent, Func<Task>> _shownCallbackCache = [];
 
     /// <summary>
     /// 获得/设置 是否后台关闭弹窗 默认 false
@@ -68,7 +73,7 @@ public partial class Modal
     /// </summary>
     private string? Backdrop => IsBackdrop ? null : "static";
 
-    private string? KeyboardString => IsKeyboard ? "true" : "false";
+    private string KeyboardString => IsKeyboard ? "true" : "false";
 
     /// <summary>
     /// <inheritdoc/>
@@ -110,7 +115,7 @@ public partial class Modal
         // 移除当前弹窗
         Dialogs.Remove(dialog);
 
-        if (Dialogs.Any())
+        if (Dialogs.Count > 0)
         {
             ResetShownDialog(Dialogs.Last());
         }
@@ -136,6 +141,11 @@ public partial class Modal
         {
             await OnShownAsync();
         }
+
+        foreach (var callback in _shownCallbackCache.Values)
+        {
+            await callback();
+        }
     }
 
     /// <summary>
@@ -153,7 +163,7 @@ public partial class Modal
         }
 
         // 多级弹窗支持
-        if (Dialogs.Any())
+        if (Dialogs.Count > 0)
         {
             ResetShownDialog(Dialogs.Last());
         }
@@ -167,13 +177,21 @@ public partial class Modal
     /// <summary>
     /// 弹窗状态切换方法
     /// </summary>
-    public Task Toggle() => InvokeVoidAsync("execute", Id, "toggle");
+    public async Task Toggle()
+    {
+        await ModuleInitTask.Task;
+        await InvokeVoidAsync("execute", Id, "toggle");
+    }
 
     /// <summary>
     /// 显示弹窗方法
     /// </summary>
     /// <returns></returns>
-    public Task Show() => InvokeVoidAsync("execute", Id, "show");
+    public async Task Show()
+    {
+        await ModuleInitTask.Task;
+        await InvokeVoidAsync("execute", Id, "show");
+    }
 
     /// <summary>
     /// 关闭当前弹窗方法
@@ -189,5 +207,24 @@ public partial class Modal
     {
         var dialog = Dialogs.FirstOrDefault(d => d.IsShown);
         dialog?.SetHeaderText(text);
+    }
+
+    /// <summary>
+    /// 注册弹窗显示后回调方法，供代码调用等效 OnShownAsync 参数赋值
+    /// </summary>
+    /// <param name="component">组件</param>
+    /// <param name="value">回调方法</param>
+    public void RegisterShownCallback(IComponent component, Func<Task> value)
+    {
+        _shownCallbackCache.AddOrUpdate(component, _ => value, (_, _) => value);
+    }
+
+    /// <summary>
+    /// 取消注册窗口显示后回调方法
+    /// </summary>
+    /// <param name="component">组件</param>
+    public void UnRegisterShownCallback(IComponent component)
+    {
+        _shownCallbackCache.TryRemove(component, out _);
     }
 }

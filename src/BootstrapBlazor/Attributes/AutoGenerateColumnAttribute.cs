@@ -1,11 +1,12 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// 
+/// AutoGenerateColumn 标签类，用于 <see cref="Table{TItem}"/> 标识自动生成列
 /// </summary>
 [AttributeUsage(AttributeTargets.Property)]
 public class AutoGenerateColumnAttribute : AutoGenerateBaseAttribute, ITableColumn
@@ -22,11 +23,6 @@ public class AutoGenerateColumnAttribute : AutoGenerateBaseAttribute, ITableColu
     public int Order { get; set; }
 
     /// <summary>
-    /// 获得/设置 是否忽略 默认为 false 不忽略
-    /// </summary>
-    public bool Ignore { get; set; }
-
-    /// <summary>
     /// 获得/设置 是否为默认排序列 默认为 false
     /// </summary>
     public bool DefaultSort { get; set; }
@@ -37,14 +33,73 @@ public class AutoGenerateColumnAttribute : AutoGenerateBaseAttribute, ITableColu
     public bool SkipValidate { get; set; }
 
     /// <summary>
-    /// 获得/设置 新建时此列只读 默认为 false
+    /// <inheritdoc/>
     /// </summary>
     public bool IsReadonlyWhenAdd { get; set; }
 
+    bool? ITableColumn.IsReadonlyWhenAdd
+    {
+        get => IsReadonlyWhenAdd;
+        set => IsReadonlyWhenAdd = value ?? false;
+    }
+
     /// <summary>
-    /// 获得/设置 编辑时此列只读 默认为 false
+    /// <inheritdoc/>
     /// </summary>
     public bool IsReadonlyWhenEdit { get; set; }
+
+    bool? ITableColumn.IsReadonlyWhenEdit
+    {
+        get => IsReadonlyWhenEdit;
+        set => IsReadonlyWhenEdit = value ?? false;
+    }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public bool IsVisibleWhenAdd { get; set; } = true;
+
+    bool? ITableColumn.IsVisibleWhenAdd
+    {
+        get => IsVisibleWhenAdd;
+        set => IsVisibleWhenAdd = value ?? true;
+    }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public bool IsVisibleWhenEdit { get; set; } = true;
+
+    /// <summary>
+    /// 自定义搜索方法
+    /// </summary>
+    Func<ITableColumn, string?, SearchFilterAction>? ITableColumn.CustomSearch { get; set; }
+
+    bool? ITableColumn.IsVisibleWhenEdit
+    {
+        get => IsVisibleWhenEdit;
+        set => IsVisibleWhenEdit = value ?? true;
+    }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public bool? Required { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public bool? IsRequiredWhenAdd { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public bool? IsRequiredWhenEdit { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public string? RequiredErrorMessage { get; set; }
 
     /// <summary>
     /// 获得/设置 是否显示标签 Tooltip 多用于标签文字过长导致裁减时使用 默认 false
@@ -72,18 +127,13 @@ public class AutoGenerateColumnAttribute : AutoGenerateBaseAttribute, ITableColu
     int? ITableColumn.Width
     {
         get => Width <= 0 ? null : Width;
-        set => Width = value == null ? 0 : Width;
+        set => Width = value ?? 0;
     }
 
     /// <summary>
     /// 获得/设置 是否固定本列 默认 false 不固定
     /// </summary>
     public bool Fixed { get; set; }
-
-    /// <summary>
-    /// 获得/设置 列是否显示 默认为 true 可见的
-    /// </summary>
-    public bool Visible { get; set; } = true;
 
     /// <summary>
     /// 获得/设置 列 td 自定义样式 默认为 null 未设置
@@ -106,9 +156,9 @@ public class AutoGenerateColumnAttribute : AutoGenerateBaseAttribute, ITableColu
     public string? PlaceHolder { get; set; }
 
     /// <summary>
-    /// 获得/设置 列格式化回调委托
+    /// <inheritdoc/>
     /// </summary>
-    public Func<object?, Task<string>>? Formatter { get; set; }
+    public Func<object?, Task<string?>>? Formatter { get; set; }
 
     /// <summary>
     /// 获得/设置 编辑模板
@@ -119,6 +169,11 @@ public class AutoGenerateColumnAttribute : AutoGenerateBaseAttribute, ITableColu
     /// 获得/设置 表头模板
     /// </summary>
     RenderFragment<ITableColumn>? ITableColumn.HeaderTemplate { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    RenderFragment<ITableColumn>? ITableColumn.ToolboxTemplate { get; set; }
 
     /// <summary>
     /// 获得/设置 组件类型 默认为 null
@@ -146,14 +201,79 @@ public class AutoGenerateColumnAttribute : AutoGenerateBaseAttribute, ITableColu
     RenderFragment? ITableColumn.FilterTemplate { get; set; }
 
     /// <summary>
-    /// 获得/设置 步长 默认为 1
+    /// <inheritdoc/>
     /// </summary>
-    public object? Step { get; set; }
+    Func<object?, Task<string?>>? ITableColumn.GetTooltipTextCallback { get; set; }
 
     /// <summary>
-    /// 获得/设置 Textarea 行数
+    /// <inheritdoc/>
+    /// </summary>
+    bool? ITableColumn.Searchable { get => Searchable; set => Searchable = value ?? false; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    bool? ITableColumn.Filterable { get => Filterable; set => Filterable = value ?? false; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    bool? ITableColumn.Sortable { get => Sortable; set => Sortable = value ?? false; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    bool? ITableColumn.TextWrap { get => TextWrap; set => TextWrap = value ?? false; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    bool? ITableColumn.TextEllipsis { get => TextEllipsis; set => TextEllipsis = value ?? false; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    bool? IEditorItem.Ignore { get => Ignore; set => Ignore = value ?? false; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    bool? IEditorItem.Readonly { get => Readonly; set => Readonly = value ?? false; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    bool? ITableColumn.Visible { get => Visible; set => Visible = value ?? true; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    bool? ITableColumn.ShowTips { get => ShowTips; set => ShowTips = value ?? false; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    bool? ITableColumn.ShowCopyColumn { get => ShowCopyColumn; set => ShowCopyColumn = value ?? false; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    Alignment? ITableColumn.Align { get => Align; set => Align = value ?? Alignment.None; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public string? Step { get; set; }
+
+    /// <summary>
+    /// 获得/设置 行数
     /// </summary>
     public int Rows { get; set; }
+
+    /// <summary>
+    /// 获得/设置 控件的占列数值范围 1-12
+    /// </summary>
+    public int Cols { get; set; }
 
     /// <summary>
     /// 获得/设置 列过滤器
@@ -172,15 +292,10 @@ public class AutoGenerateColumnAttribute : AutoGenerateBaseAttribute, ITableColu
     public string? Text { get; set; }
 
     /// <summary>
-    /// 
+    /// <inheritdoc/>
     /// </summary>
     [NotNull]
     internal string? FieldName { get; set; }
-
-    /// <summary>
-    /// 获得/设置 字典数据源 常用于外键自动转换为名称操作
-    /// </summary>
-    IEnumerable<SelectedItem>? IEditorItem.Lookup { get; set; }
 
     /// <summary>
     /// 获得/设置 字段数据源下拉框是否显示搜索栏 默认 false 不显示
@@ -193,14 +308,29 @@ public class AutoGenerateColumnAttribute : AutoGenerateBaseAttribute, ITableColu
     public bool IsPopover { get; set; }
 
     /// <summary>
-    /// 获得/设置 字典数据源字符串比较规则 默认 StringComparison.OrdinalIgnoreCase 大小写不敏感 
+    /// <inheritdoc/>
     /// </summary>
-    public StringComparison LookupStringComparison { get; set; } = StringComparison.OrdinalIgnoreCase;
+    IEnumerable<SelectedItem>? ILookup.Lookup { get; set; }
 
     /// <summary>
-    /// 获得/设置 LookupService 服务指定数据集合键值 常用于外键自动转换为名称操作
+    /// <inheritdoc/>
+    /// </summary>
+    ILookupService? ILookup.LookupService { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>>
     /// </summary>
     public string? LookupServiceKey { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>>
+    /// </summary>
+    public object? LookupServiceData { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>>
+    /// </summary>
+    public StringComparison LookupStringComparison { get; set; } = StringComparison.OrdinalIgnoreCase;
 
     /// <summary>
     /// 获得/设置 单元格回调方法
@@ -213,13 +343,13 @@ public class AutoGenerateColumnAttribute : AutoGenerateBaseAttribute, ITableColu
     List<IValidator>? IEditorItem.ValidateRules { get; set; }
 
     /// <summary>
-    /// 
+    /// 获取绑定字段显示名称方法
     /// </summary>
     /// <returns></returns>
-    public string GetDisplayName() => Text ?? "";
+    public virtual string GetDisplayName() => Text ?? "";
 
     /// <summary>
-    /// 
+    /// <inheritdoc/>
     /// </summary>
     /// <returns></returns>
     public string GetFieldName() => FieldName;
@@ -253,4 +383,9 @@ public class AutoGenerateColumnAttribute : AutoGenerateBaseAttribute, ITableColu
     /// <inheritdoc/>
     /// </summary>
     public bool HeaderTextEllipsis { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public bool IsMarkupString { get; set; }
 }

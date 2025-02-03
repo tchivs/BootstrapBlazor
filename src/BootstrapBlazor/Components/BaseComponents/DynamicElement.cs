@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Web;
@@ -56,6 +57,18 @@ public class DynamicElement : BootstrapComponentBase
     public Func<Task>? OnDoubleClick { get; set; }
 
     /// <summary>
+    /// 获得/设置 OnContextMenu 回调委托
+    /// </summary>
+    [Parameter]
+    public Func<MouseEventArgs, Task>? OnContextMenu { get; set; }
+
+    /// <summary>
+    /// 获得/设置 是否触发 OnContextMenu 事件 默认 false
+    /// </summary>
+    [Parameter]
+    public bool TriggerContextMenu { get; set; }
+
+    /// <summary>
     /// 获得/设置 内容组件
     /// </summary>
     [Parameter]
@@ -98,7 +111,13 @@ public class DynamicElement : BootstrapComponentBase
             builder.AddEventStopPropagationAttribute(5, "onclick", StopPropagation);
         }
 
-        builder.AddContent(6, ChildContent);
+        if (TriggerContextMenu && OnContextMenu != null)
+        {
+            builder.AddAttribute(6, "oncontextmenu", EventCallback.Factory.Create<MouseEventArgs>(this, e => OnContextMenu(e)));
+            builder.AddEventPreventDefaultAttribute(7, "oncontextmenu", true);
+        }
+
+        builder.AddContent(8, ChildContent);
 
         if (GenerateElement || IsTriggerClick() || IsTriggerDoubleClick())
         {

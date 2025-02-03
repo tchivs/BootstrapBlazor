@@ -1,4 +1,4 @@
-﻿import EventHandler from './event-handler.js'
+﻿import EventHandler from "./event-handler.js"
 
 export default {
     drag: (el, start, move, end) => {

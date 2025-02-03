@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -19,6 +20,18 @@ public partial class Table<TItem>
         .Build();
 
     /// <summary>
+    /// 获得/设置 是否保持选择行，默认为 false 不保持
+    /// </summary>
+    [Parameter]
+    public bool IsKeepSelectedRows { get; set; }
+
+    /// <summary>
+    /// 获得/设置 新建数据是否保持原选择行，默认为 false 不保持
+    /// </summary>
+    [Parameter]
+    public bool IsKeepSelectedRowAfterAdd { get; set; }
+
+    /// <summary>
     /// 获得 表头行是否选中状态
     /// </summary>
     /// <returns></returns>
@@ -29,13 +42,13 @@ public partial class Table<TItem>
         var filterRows = ShowRowCheckboxCallback == null ? Rows : Rows.Where(ShowRowCheckboxCallback);
         if (filterRows.Any())
         {
-            if (filterRows.All(AnyRow))
+            if (!filterRows.Except(SelectedRows).Any())
             {
                 // 所有行被选中
                 // all rows are selected
                 ret = CheckboxState.Checked;
             }
-            else if (filterRows.Any(AnyRow))
+            else if (filterRows.Any(row => SelectedRows.Any(i => Equals(i, row))))
             {
                 // 任意一行被选中
                 // any one row is selected
@@ -43,8 +56,6 @@ public partial class Table<TItem>
             }
         }
         return ret;
-
-        bool AnyRow(TItem row) => SelectedRows.Any(i => Equals(i, row));
     }
 
     /// <summary>
@@ -91,21 +102,12 @@ public partial class Table<TItem>
     /// <param name="val"></param>
     protected virtual async Task OnHeaderCheck(CheckboxState state, TItem val)
     {
-        switch (state)
+        SelectedRows.RemoveAll(Rows.Intersect(SelectedRows).Contains);
+        if (state == CheckboxState.Checked)
         {
-            case CheckboxState.Checked:
-                // select all
-                SelectedRows.Clear();
-                SelectedRows.AddRange(ShowRowCheckboxCallback == null ? Rows : Rows.Where(ShowRowCheckboxCallback));
-                await OnSelectedRowsChanged();
-                break;
-            case CheckboxState.UnChecked:
-            default:
-                // unselect all
-                SelectedRows.Clear();
-                await OnSelectedRowsChanged();
-                break;
+            SelectedRows.AddRange(ShowRowCheckboxCallback == null ? Rows : Rows.Where(ShowRowCheckboxCallback));
         }
+        await OnSelectedRowsChanged();
     }
 
     /// <summary>
@@ -130,8 +132,16 @@ public partial class Table<TItem>
         AddInCell = false;
         EditInCell = false;
 
+        ShowAddForm = false;
+        ShowEditForm = false;
+
         await OnSelectedRowsChanged();
     }
+
+    /// <summary>
+    /// 是否重置列变量 <see cref="OnAfterRenderAsync(bool)"/> 方法中重置为 false
+    /// </summary>
+    private bool _resetColumns;
 
     /// <summary>
     /// 获得/设置 列改变显示状态回调方法
@@ -141,6 +151,11 @@ public partial class Table<TItem>
 
     private async Task OnToggleColumnVisible(string columnName, bool visible)
     {
+        if (AllowResizing)
+        {
+            _resetColumns = true;
+        }
+
         if (OnColumnVisibleChanged != null)
         {
             await OnColumnVisibleChanged(columnName, visible);

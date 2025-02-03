@@ -1,39 +1,32 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
+
+using Microsoft.Extensions.Logging;
+using System.Text.Json.Serialization;
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
 /// WebClient 服务类
 /// </summary>
-public class WebClientService : IAsyncDisposable
+/// <param name="ipLocatorFactory"></param>
+/// <param name="options"></param>
+/// <param name="runtime"></param>
+/// <param name="navigation"></param>
+/// <param name="logger"></param>
+public class WebClientService(IIpLocatorFactory ipLocatorFactory,
+    IOptionsMonitor<BootstrapBlazorOptions> options,
+    IJSRuntime runtime,
+    NavigationManager navigation,
+    ILogger<WebClientService> logger) : IAsyncDisposable
 {
-    /// <summary>
-    /// 获得/设置 模态弹窗返回值任务实例
-    /// </summary>
-    private TaskCompletionSource? ReturnTask { get; set; }
-
-    private IJSRuntime JSRuntime { get; }
-
-    private NavigationManager Navigation { get; }
-
-    private JSModule? Module { get; set; }
-
-    private DotNetObjectReference<WebClientService>? Interop { get; set; }
-
-    private ClientInfo? Client { get; set; }
-
-    /// <summary>
-    /// 构造函数
-    /// </summary>
-    /// <param name="runtime"></param>
-    /// <param name="navigation"></param>
-    public WebClientService(IJSRuntime runtime, NavigationManager navigation)
-    {
-        JSRuntime = runtime;
-        Navigation = navigation;
-    }
+    private TaskCompletionSource? _taskCompletionSource;
+    private JSModule? _jsModule;
+    private DotNetObjectReference<WebClientService>? _interop;
+    private ClientInfo? _client;
+    private IIpLocatorProvider? _provider;
 
     /// <summary>
     /// 获得 ClientInfo 实例方法
@@ -41,56 +34,46 @@ public class WebClientService : IAsyncDisposable
     /// <returns></returns>
     public async Task<ClientInfo> GetClientInfo()
     {
-        ReturnTask = new TaskCompletionSource();
-        Client = new ClientInfo()
+        _taskCompletionSource = new TaskCompletionSource();
+        _client = new ClientInfo()
         {
-            RequestUrl = Navigation.Uri
+            RequestUrl = navigation.Uri
         };
-        Module ??= await JSRuntime.LoadModule("./_content/BootstrapBlazor/modules/client.js");
-        Interop ??= DotNetObjectReference.Create(this);
-        await Module.InvokeVoidAsync("ping", "ip.axd", Interop, nameof(SetData));
 
-        // 等待 SetData 方法执行完毕
-        await ReturnTask.Task;
-        return Client;
+        try
+        {
+            _jsModule ??= await runtime.LoadModuleByName("client");
+            _interop ??= DotNetObjectReference.Create(this);
+            await _jsModule.InvokeVoidAsync("ping", "ip.axd", _interop, nameof(SetData));
+
+            // 等待 SetData 方法执行完毕
+            await _taskCompletionSource.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        }
+        catch (TimeoutException) { }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "method GetClientInfo failed");
+        }
+
+        // 补充 IP 地址信息
+        if (options.CurrentValue.WebClientOptions.EnableIpLocator && string.IsNullOrEmpty(_client.City))
+        {
+            _provider ??= ipLocatorFactory.Create(options.CurrentValue.IpLocatorOptions.ProviderName);
+            _client.City = await _provider.Locate(_client.Ip);
+        }
+        return _client;
     }
 
     /// <summary>
     /// SetData 方法由 JS 调用
     /// </summary>
-    /// <param name="id"></param>
-    /// <param name="ip"></param>
-    /// <param name="os"></param>
-    /// <param name="browser"></param>
-    /// <param name="device"></param>
-    /// <param name="language"></param>
-    /// <param name="engine"></param>
-    /// <param name="agent"></param>
+    /// <param name="client"></param>
     [JSInvokable]
-    public void SetData(string id, string ip, string os, string browser, string device, string language, string engine, string agent)
+    public void SetData(ClientInfo client)
     {
-        if (Client != null)
-        {
-            Client.Id = id;
-            Client.Ip = ip;
-            Client.OS = os;
-            Client.Browser = browser;
-            Client.Device = WebClientService.ParseDeviceType(device);
-            Client.Language = language;
-            Client.Engine = engine;
-            Client.UserAgent = agent;
-        }
-        ReturnTask?.TrySetResult();
-    }
-
-    private static WebClientDeviceType ParseDeviceType(string device)
-    {
-        var ret = WebClientDeviceType.PC;
-        if (Enum.TryParse<WebClientDeviceType>(device, true, out var d))
-        {
-            ret = d;
-        }
-        return ret;
+        _client = client;
+        _client.RequestUrl = navigation.Uri;
+        _taskCompletionSource?.TrySetResult();
     }
 
     /// <summary>
@@ -103,13 +86,13 @@ public class WebClientService : IAsyncDisposable
         if (disposing)
         {
             // 销毁 DotNetObjectReference 实例
-            Interop?.Dispose();
+            _interop?.Dispose();
 
             // 销毁 JSModule
-            if (Module != null)
+            if (_jsModule != null)
             {
-                await Module.DisposeAsync();
-                Module = null;
+                await _jsModule.DisposeAsync();
+                _jsModule = null;
             }
         }
     }
@@ -131,7 +114,7 @@ public class WebClientService : IAsyncDisposable
 public class ClientInfo
 {
     /// <summary>
-    /// 获得/设置 操作日志主键ID
+    /// 获得/设置 链接 Id
     /// </summary>
     public string? Id { get; set; }
 
@@ -158,6 +141,7 @@ public class ClientInfo
     /// <summary>
     /// 获得/设置 客户端设备类型
     /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public WebClientDeviceType Device { get; set; }
 
     /// <summary>

@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -48,6 +49,11 @@ public class DialogOption
     /// 获得/设置 是否弹窗正文超长时滚动 默认为 false
     /// </summary>
     public bool IsScrolling { get; set; } = false;
+
+    /// <summary>
+    /// 获得/设置 是否显示调整大小按钮 默认为 false
+    /// </summary>
+    public bool ShowResize { get; set; }
 
     /// <summary>
     /// 获得/设置 是否显示关闭按钮 默认为 true
@@ -125,9 +131,14 @@ public class DialogOption
     public BootstrapDynamicComponent? Component { get; set; }
 
     /// <summary>
-    /// 获得/设置 关闭弹窗回调方法
+    /// 获得/设置 保存按钮图标 默认 null 使用当前主题图标
     /// </summary>
-    public Func<Task>? OnCloseAsync { get; set; }
+    public string? SaveButtonIcon { get; set; }
+
+    /// <summary>
+    /// 获得/设置 保存按钮文本
+    /// </summary>
+    public string? SaveButtonText { get; set; }
 
     /// <summary>
     /// 获得/设置 保存按钮回调方法
@@ -135,14 +146,19 @@ public class DialogOption
     public Func<Task<bool>>? OnSaveAsync { get; set; }
 
     /// <summary>
+    /// 获得/设置 关闭按钮图标 默认 null 使用当前主题图标
+    /// </summary>
+    public string? CloseButtonIcon { get; set; }
+
+    /// <summary>
     /// 获得/设置 关闭按钮文本
     /// </summary>
     public string? CloseButtonText { get; set; }
 
     /// <summary>
-    /// 获得/设置 查询按钮文本
+    /// 获得/设置 关闭弹窗回调方法
     /// </summary>
-    public string? SaveButtonText { get; set; }
+    public Func<Task>? OnCloseAsync { get; set; }
 
     /// <summary>
     /// 获得/设置 保存成功后是否自动关闭弹窗 默认 true 自动关闭
@@ -158,6 +174,21 @@ public class DialogOption
     /// 获得/设置 弹窗已显示时回调此方法
     /// </summary>
     public Func<Task>? OnShownAsync { get; set; }
+
+    /// <summary>
+    /// 获得/设置 是否显示导出 Pdf 按钮 默认为 false 不显示
+    /// </summary>
+    public bool ShowExportPdfButton { get; set; }
+
+    /// <summary>
+    /// 获得/设置 Header 中是否显示导出 Pdf 按钮 默认 false 不显示
+    /// </summary>
+    public bool ShowExportPdfButtonInHeader { get; set; }
+
+    /// <summary>
+    /// 获得/设置 导出 Pdf 按钮配置项
+    /// </summary>
+    public ExportPdfButtonOptions? ExportPdfButtonOptions { get; set; }
 
     /// <summary>
     /// 关闭弹窗方法
@@ -186,12 +217,19 @@ public class DialogOption
             [nameof(ModalDialog.ShowSaveButton)] = ShowSaveButton,
             [nameof(ModalDialog.ShowHeaderCloseButton)] = ShowHeaderCloseButton,
             [nameof(ModalDialog.ShowFooter)] = ShowFooter,
+            [nameof(ModalDialog.ShowResize)] = ShowResize,
             [nameof(ModalDialog.ShowPrintButton)] = ShowPrintButton,
             [nameof(ModalDialog.ShowPrintButtonInHeader)] = ShowPrintButtonInHeader,
             [nameof(ModalDialog.IsAutoCloseAfterSave)] = IsAutoCloseAfterSave,
             [nameof(ModalDialog.IsDraggable)] = IsDraggable,
-            [nameof(ModalDialog.ShowMaximizeButton)] = ShowMaximizeButton
+            [nameof(ModalDialog.ShowMaximizeButton)] = ShowMaximizeButton,
+            [nameof(ModalDialog.ShowExportPdfButton)] = ShowExportPdfButton,
+            [nameof(ModalDialog.ShowExportPdfButtonInHeader)] = ShowExportPdfButtonInHeader,
         };
+        if (ExportPdfButtonOptions != null)
+        {
+            ret.Add(nameof(ModalDialog.ExportPdfButtonOptions), ExportPdfButtonOptions);
+        }
         if (!string.IsNullOrEmpty(PrintButtonText))
         {
             ret.Add(nameof(ModalDialog.PrintButtonText), PrintButtonText);

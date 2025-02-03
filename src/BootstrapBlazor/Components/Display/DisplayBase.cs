@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.AspNetCore.Components.Forms;
 using System.Linq.Expressions;
@@ -47,13 +48,13 @@ public abstract class DisplayBase<TValue> : BootstrapModuleComponentBase
     /// Gets or sets a callback that updates the bound value.
     /// </summary>
     [Parameter]
-    public EventCallback<TValue> ValueChanged { get; set; }
+    public EventCallback<TValue?> ValueChanged { get; set; }
 
     /// <summary>
     /// Gets or sets an expression that identifies the bound value.
     /// </summary>
     [Parameter]
-    public Expression<Func<TValue>>? ValueExpression { get; set; }
+    public Expression<Func<TValue?>>? ValueExpression { get; set; }
 
     /// <summary>
     /// 获得/设置 是否显示前置标签 默认值为 null 为空时默认不显示标签
@@ -62,7 +63,7 @@ public abstract class DisplayBase<TValue> : BootstrapModuleComponentBase
     public bool? ShowLabel { get; set; }
 
     /// <summary>
-    /// 获得/设置 是否显示标签 Tooltip 多用于标签文字过长导致裁减时使用 默认 null
+    /// 获得/设置 是否显示 Tooltip 多用于文字过长导致裁减时使用 默认 null
     /// </summary>
     [Parameter]
     public bool? ShowLabelTooltip { get; set; }
@@ -82,7 +83,7 @@ public abstract class DisplayBase<TValue> : BootstrapModuleComponentBase
     /// <summary>
     /// 获得 IShowLabel 实例
     /// </summary>
-    [CascadingParameter(Name = "EidtorForm")]
+    [CascadingParameter(Name = "EditorForm")]
     protected IShowLabel? EditorForm { get; set; }
 
     /// <summary>
@@ -135,39 +136,27 @@ public abstract class DisplayBase<TValue> : BootstrapModuleComponentBase
         else if (InputGroup == null)
         {
             // 如果被 InputGroup 包裹不显示 Label
-            // 组件自身未设置 ShowLabel 取 EditorForm/VaidateForm 级联值
+            // 组件自身未设置 ShowLabel 取 EditorForm/ValidateForm 级联值
             if (ShowLabel == null && (EditorForm != null || ValidateForm != null))
             {
                 showLabel = EditorForm?.ShowLabel ?? ValidateForm?.ShowLabel ?? true;
             }
 
             IsShowLabel = showLabel ?? false;
-
-            // 设置显示标签时未提供 DisplayText 通过双向绑定获取 DisplayName
-            if (IsShowLabel && DisplayText == null && FieldIdentifier.HasValue)
-            {
-                DisplayText = FieldIdentifier.Value.GetDisplayName();
-            }
         }
         else
         {
-            IsShowLabel = false;
-
-            if (DisplayText == null && FieldIdentifier.HasValue)
-            {
-                DisplayText = FieldIdentifier.Value.GetDisplayName();
-            }
+            IsShowLabel = showLabel ?? EditorForm?.ShowLabel ?? ValidateForm?.ShowLabel ?? false;
         }
 
-        if (ShowLabelTooltip == null && EditorForm != null)
+        // 设置显示标签时未提供 DisplayText 通过双向绑定获取 DisplayName
+        if (IsShowLabel)
         {
-            ShowLabelTooltip = EditorForm.ShowLabelTooltip;
+            DisplayText ??= FieldIdentifier?.GetDisplayName();
         }
 
-        if (ShowLabelTooltip == null && ValidateForm != null)
-        {
-            ShowLabelTooltip = ValidateForm.ShowLabelTooltip;
-        }
+        // 设置是否显示标签工具栏
+        ShowLabelTooltip ??= EditorForm?.ShowLabelTooltip ?? ValidateForm?.ShowLabelTooltip;
     }
 
     /// <summary>
@@ -175,7 +164,7 @@ public abstract class DisplayBase<TValue> : BootstrapModuleComponentBase
     /// </summary>
     /// <param name="value">The value to format.</param>
     /// <returns>A string representation of the value.</returns>
-    protected virtual string? FormatValueAsString(TValue value)
+    protected virtual string? FormatValueAsString(TValue? value)
     {
         string? ret;
         if (value is SelectedItem item)

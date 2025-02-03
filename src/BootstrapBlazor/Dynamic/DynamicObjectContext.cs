@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using System.Collections.Concurrent;
 using System.Reflection;
@@ -44,16 +45,12 @@ public abstract class DynamicObjectContext : IDynamicObjectContext
         var attr = attributeType.GetConstructor(types);
         if (attr != null)
         {
-            var cab = new CustomAttributeBuilder(attr, constructorArgs,
-                namedProperties: propertyInfos ?? Array.Empty<PropertyInfo>(),
-                propertyValues: propertyValues ?? Array.Empty<object?>());
-            CustomerAttributeBuilderCache.AddOrUpdate(columnName,
-                key => new List<CustomAttributeBuilder> { cab },
-                (key, builders) =>
-                {
-                    builders.Add(cab);
-                    return builders;
-                });
+            var cab = new CustomAttributeBuilder(attr, constructorArgs, namedProperties: propertyInfos ?? [], propertyValues: propertyValues ?? []);
+            CustomerAttributeBuilderCache.AddOrUpdate(columnName, key => [cab], (key, builders) =>
+            {
+                builders.Add(cab);
+                return builders;
+            });
         }
     }
 
@@ -94,4 +91,9 @@ public abstract class DynamicObjectContext : IDynamicObjectContext
     /// 获得选中行比对回调方法
     /// </summary>
     public Func<IDynamicObject?, IDynamicObject?, bool>? EqualityComparer { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    public Func<QueryPageOptions, IEnumerable<IDynamicObject>, IEnumerable<IDynamicObject>>? OnFilterCallback { get; set; }
 }

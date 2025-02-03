@@ -1,8 +1,8 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace UnitTest.Components;
@@ -39,8 +39,11 @@ public class ToastTest : BootstrapBlazorTestBase
     public void SetPlacement_Ok(Placement placement, string css)
     {
         var cut = Context.RenderComponent<ToastContainer>();
-        cut.InvokeAsync(() => cut.Instance.SetPlacement(placement));
-        Assert.Contains(css, cut.Markup);
+        cut.InvokeAsync(() =>
+        {
+            cut.Instance.SetPlacement(placement);
+            Assert.Contains(css, cut.Markup);
+        });
     }
 
     [Fact]
@@ -55,22 +58,44 @@ public class ToastTest : BootstrapBlazorTestBase
             ForceDelay = true
         });
 
-        await service.Success(null, "test content");
-        await service.Success("Test", null);
         await service.Success("Test", "test content");
 
-        await service.Error(null, "test content");
-        await service.Error("Test", null);
         await service.Error("Test", "test content");
 
-        await service.Information(null, "test content");
-        await service.Information("Test", null);
         await service.Information("Test", "test content");
 
         option.CurrentValue.ToastDelay = 2000;
-        await service.Warning(null, "test content");
-        await service.Warning("Test", null);
         await service.Warning("Test", "test content");
+    }
+
+    [Fact]
+    public async Task PreventDuplicates_Ok()
+    {
+        Context.RenderComponent<ToastContainer>();
+
+        var service = Context.Services.GetRequiredService<ToastService>();
+        await service.Show(new ToastOption()
+        {
+            PreventDuplicates = true,
+            Content = "Content"
+        });
+        await service.Show(new ToastOption()
+        {
+            PreventDuplicates = true,
+            Title = "Title",
+        });
+        await service.Show(new ToastOption()
+        {
+            PreventDuplicates = true,
+            Title = "Title",
+            Content = "Content"
+        });
+        await service.Show(new ToastOption()
+        {
+            PreventDuplicates = true,
+            Title = "Title",
+            Content = "Content"
+        });
     }
 
     [Fact]
@@ -89,7 +114,7 @@ public class ToastTest : BootstrapBlazorTestBase
     [Fact]
     public async Task Animation_Ok()
     {
-        var cut = Context.RenderComponent<ToastContainer>();
+        Context.RenderComponent<ToastContainer>();
         var service = Context.Services.GetRequiredService<ToastService>();
         var option = new ToastOption()
         {
@@ -124,7 +149,7 @@ public class ToastTest : BootstrapBlazorTestBase
         await cut.InvokeAsync(() => cut.Instance.Close());
 
         var option = new ToastOption();
-        option.Close();
+        await option.Close();
     }
 
     [Fact]
@@ -210,5 +235,24 @@ public class ToastTest : BootstrapBlazorTestBase
             });
         });
         Assert.Contains("error-icon", cut.Markup);
+    }
+
+    [Fact]
+    public async Task OnCloseAsync_Ok()
+    {
+        var close = false;
+        var cut = Context.RenderComponent<ToastContainer>();
+        var service = Context.Services.GetRequiredService<ToastService>();
+        var option = new ToastOption()
+        {
+            OnCloseAsync = () =>
+            {
+                close = true;
+                return Task.CompletedTask;
+            }
+        };
+        await service.Show(option);
+        await cut.InvokeAsync(() => option.Close());
+        Assert.True(close);
     }
 }

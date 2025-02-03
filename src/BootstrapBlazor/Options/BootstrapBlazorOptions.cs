@@ -1,8 +1,9 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using BootstrapBlazor.Localization.Json;
+using Microsoft.Extensions.Localization;
 using System.Globalization;
 
 namespace BootstrapBlazor.Components;
@@ -10,7 +11,7 @@ namespace BootstrapBlazor.Components;
 /// <summary>
 /// 组件全局配置类
 /// </summary>
-public class BootstrapBlazorOptions
+public class BootstrapBlazorOptions : IOptions<BootstrapBlazorOptions>
 {
     /// <summary>
     /// 获得/设置 Toast 组件 Delay 默认值 默认为 0
@@ -59,15 +60,20 @@ public class BootstrapBlazorOptions
     public bool? IgnoreLocalizerMissing { get; set; }
 
     /// <summary>
+    /// 获得/设置 是否禁用从服务中获取本地化资源 默认 false 未禁用
+    /// </summary>
+    public bool? DisableGetLocalizerFromService { get; set; }
+
+    /// <summary>
+    /// 获得/设置 是否禁用获取 <see cref="ResourceManagerStringLocalizer"/> 类型本地化资源 默认 false 未禁用
+    /// </summary>
+    public bool? DisableGetLocalizerFromResourceManager { get; set; }
+
+    /// <summary>
     /// 获得/设置 默认文化信息
     /// </summary>
     /// <remarks>开启多文化时此参数无效</remarks>
     public string? DefaultCultureInfo { get; set; }
-
-    /// <summary>
-    /// 获得/设置 表格设置实例
-    /// </summary>
-    public TableSettings TableSettings { get; set; } = new();
 
     /// <summary>
     /// 获得/设置 是否禁用表单内回车自动提交功能 默认 null 未设置
@@ -75,18 +81,51 @@ public class BootstrapBlazorOptions
     public bool? DisableAutoSubmitFormByEnter { get; set; }
 
     /// <summary>
-    /// 获得/设置 网站主题集合
+    /// 获得/设置 JavaScript 模块脚本版本号 默认为 null
     /// </summary>
-    public List<KeyValuePair<string, string>> Themes { get; } = new()
-    {
-        new("Bootstrap", "bootstrap.blazor.bundle.min.css"),
-        new("Motronic", "motronic.min.css")
-    };
+    public string? JSModuleVersion { get; set; }
+
+    /// <summary>
+    /// 获得/设置 表格设置实例
+    /// </summary>
+    public TableSettings TableSettings { get; set; } = new();
+
+    /// <summary>
+    /// 获得/设置 Step 配置实例
+    /// </summary>
+    public StepSettings StepSettings { get; set; } = new();
+
+    /// <summary>
+    /// 获得/设置 ConnectionHubOptions 配置 默认不为空
+    /// </summary>
+    public ConnectionHubOptions ConnectionHubOptions { get; set; } = new();
+
+    /// <summary>
+    /// 获得/设置 WebClientOptions 配置 默认不为空
+    /// </summary>
+    public WebClientOptions WebClientOptions { get; set; } = new();
+
+    /// <summary>
+    /// 获得/设置 IpLocatorOptions 配置 默认不为空
+    /// </summary>
+    public IpLocatorOptions IpLocatorOptions { get; set; } = new();
+
+    /// <summary>
+    /// 获得/设置 ScrollOptions 配置 默认不为空
+    /// </summary>
+    public ScrollOptions ScrollOptions { get; set; } = new();
+
+    /// <summary>
+    /// 获得/设置 ContextMenuOptions 配置 默认不为空
+    /// </summary>
+    public ContextMenuOptions ContextMenuOptions { get; set; } = new();
+
+    BootstrapBlazorOptions IOptions<BootstrapBlazorOptions>.Value => this;
 
     /// <summary>
     /// 获得支持多语言集合
     /// </summary>
     /// <returns></returns>
     public IList<CultureInfo> GetSupportedCultures() => SupportedCultures?.Select(name => new CultureInfo(name)).ToList()
-        ?? new List<CultureInfo> { new("en"), new("zh") };
+        ?? [new("en"), new("zh")];
 }

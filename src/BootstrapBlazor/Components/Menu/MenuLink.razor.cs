@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.Localization;
@@ -16,7 +17,6 @@ public sealed partial class MenuLink
         .AddClass(Item.CssClass, !string.IsNullOrEmpty(Item.CssClass))
         .AddClass("active", Parent.DisableNavigation && Item.IsActive && !Item.IsDisabled)
         .AddClass("disabled", Item.IsDisabled)
-        .AddClass("expand", Parent.IsVertical && !Item.IsCollapsed)
         .AddClassFromAttributes(AdditionalAttributes)
         .Build();
 
@@ -29,6 +29,8 @@ public sealed partial class MenuLink
     private string? TargetString => string.IsNullOrEmpty(Item.Target) ? null : Item.Target;
 
     private bool PreventDefault => HrefString == "#";
+
+    private string? AriaExpandedString => (Parent.IsVertical && !Item.IsCollapsed ? "true" : "false");
 
     /// <summary>
     /// 获得/设置 MenuItem 实例 不可为空
@@ -51,7 +53,7 @@ public sealed partial class MenuLink
     [NotNull]
     private IStringLocalizer<Menu>? Localizer { get; set; }
 
-    private NavLinkMatch ItemMatch => string.IsNullOrEmpty(Item.Url) ? NavLinkMatch.All : Item.Match;
+    private NavLinkMatch ItemMatch => string.IsNullOrEmpty(Item.Url?.TrimStart('/')) ? NavLinkMatch.All : Item.Match;
 
     private string? IconString => CssBuilder.Default("menu-icon")
         .AddClass(Item.Icon)

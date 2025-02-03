@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.Extensions.Primitives;
 using System.Text;
@@ -95,7 +96,7 @@ public static class QueryHelper
     /// </summary>
     /// <param name="queryString">The raw query string value, with or without the leading '?'.</param>
     /// <returns>A collection of parsed keys and values.</returns>
-    public static Dictionary<string, StringValues> ParseQuery(string? queryString) => ParseNullableQuery(queryString) ?? new Dictionary<string, StringValues>();
+    public static Dictionary<string, StringValues> ParseQuery(string? queryString) => ParseNullableQuery(queryString) ?? [];
 
     /// <summary>
     /// Parse a query string into its component key and value parts.
@@ -129,13 +130,13 @@ public static class QueryHelper
             var equalIndex = segment.Span.IndexOf('=');
             if (equalIndex >= 0)
             {
-                ret ??= new();
+                ret ??= [];
                 var v = Uri.UnescapeDataString(segment[(equalIndex + 1)..].ToString());
                 ret.Add(segment[..equalIndex].ToString(), v);
             }
             else if (!segment.IsEmpty)
             {
-                ret ??= new();
+                ret ??= [];
                 ret.Add(segment.ToString(), default);
             }
         }

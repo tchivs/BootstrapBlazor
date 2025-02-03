@@ -1,15 +1,14 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
-
-using System.Text.Json.Serialization;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// 
+/// BreakPoint 枚举
 /// </summary>
-[JsonConverter(typeof(JsonStringEnumConverter))]
+[JsonEnumConverter(true)]
 public enum BreakPoint
 {
     /// <summary>
@@ -18,32 +17,37 @@ public enum BreakPoint
     None,
 
     /// <summary>
-    /// 未设置
+    /// 超小屏幕 小于 375px
+    /// </summary>
+    ExtraExtraSmall,
+
+    /// <summary>
+    /// 超小屏幕 大于等于 375px
     /// </summary>
     ExtraSmall,
 
     /// <summary>
-    /// 小屏幕 576px
+    /// 小屏幕 大于等于 576px
     /// </summary>
     Small,
 
     /// <summary>
-    /// 中屏幕 768px
+    /// 中屏幕 大于等于 768px
     /// </summary>
     Medium,
 
     /// <summary>
-    /// 大屏幕 992px
+    /// 大屏幕 大于等于 992px
     /// </summary>
     Large,
 
     /// <summary>
-    /// 超大屏幕 1200px
+    /// 超大屏幕 大于等于 1200px
     /// </summary>
     ExtraLarge,
 
     /// <summary>
-    /// 超大屏幕 1400px
+    /// 超大屏幕 大于等于 1400px
     /// </summary>
     ExtraExtraLarge
 }

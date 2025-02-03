@@ -2,10 +2,14 @@
 
 cd ~/BootstrapBlazor
 git pull
-dotnet restore --no-cache
+
+curl https://www.blazor.zone/api/dispatch?token=BootstrapBlazor-Publish
+dotnet build src/BootstrapBlazor.Server
+
+curl https://www.blazor.zone/api/dispatch?token=BootstrapBlazor-Reboot
 dotnet publish src/BootstrapBlazor.Server -c Release
 
 systemctl stop ba.blazor
-\cp -fr ~/BootstrapBlazor/src/BootstrapBlazor.Server/bin/Release/net7.0/publish/* /usr/local/ba/blazor
+\cp -fr ~/BootstrapBlazor/src/BootstrapBlazor.Server/bin/Release/net9.0/publish/* /usr/local/ba/blazor
 systemctl start ba.blazor
 systemctl status ba.blazor -l --no-pager

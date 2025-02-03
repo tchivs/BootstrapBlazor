@@ -1,9 +1,9 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using BootstrapBlazor.Localization;
-using BootstrapBlazor.Shared;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
@@ -18,7 +18,7 @@ public class JsonStringLocalizerTest : BootstrapBlazorTestBase
     {
         var factory = Context.Services.GetRequiredService<IStringLocalizerFactory>();
         var mi = factory.GetType().GetMethods(BindingFlags.NonPublic | BindingFlags.Instance).First(i => i.Name == "GetResourcePrefix" && i.GetParameters().Length == 1)!;
-        Assert.Throws<TargetInvocationException>(() => mi.Invoke(factory, new object?[] { new MockTypeInfo() }));
+        Assert.Throws<TargetInvocationException>(() => mi.Invoke(factory, [new MockTypeInfo()]));
     }
 
     [Fact]
@@ -116,6 +116,18 @@ public class JsonStringLocalizerTest : BootstrapBlazorTestBase
     }
 
     [Fact]
+    public void GetAllStrings_Dynamic()
+    {
+        var dynamicType = EmitHelper.CreateTypeByName("test_type", new InternalTableColumn[] { new("Name", typeof(string)) });
+        Assert.NotNull(dynamicType);
+
+        var factory = Context.Services.GetRequiredService<IStringLocalizerFactory>();
+        var localizer = factory.Create(dynamicType);
+        var items = localizer.GetAllStrings();
+        Assert.Empty(items);
+    }
+
+    [Fact]
     public void GetAllStrings_FromInject()
     {
         var sc = new ServiceCollection();
@@ -165,6 +177,27 @@ public class JsonStringLocalizerTest : BootstrapBlazorTestBase
     }
 
     [Fact]
+    public void DisableGetLocalizerFromResourceManager_Ok()
+    {
+        var sc = new ServiceCollection();
+        var builder = new ConfigurationBuilder();
+        builder.AddJsonFile("appsettings.json");
+        builder.AddInMemoryCollection(new Dictionary<string, string?>()
+        {
+            ["BootstrapBlazorOptions:DisableGetLocalizerFromService"] = "true",
+            ["BootstrapBlazorOptions:DisableGetLocalizerFromResourceManager"] = "true"
+        });
+        var config = builder.Build();
+        sc.AddSingleton<IConfiguration>(config);
+        sc.AddBootstrapBlazor();
+
+        var provider = sc.BuildServiceProvider();
+        var localizer = provider.GetRequiredService<IStringLocalizer<Dummy>>();
+        var items = localizer.GetAllStrings(false);
+        Assert.Empty(items);
+    }
+
+    [Fact]
     public void GetAllStrings_FromResource()
     {
         var sc = new ServiceCollection();
@@ -179,9 +212,12 @@ public class JsonStringLocalizerTest : BootstrapBlazorTestBase
         var items = localizer.GetAllStrings(false);
 
         // TODO: vs+windows pass
-        // mac linux rider+windows failed
-        //Assert.NotEmpty(items);
-        //Assert.Equal("test-name", items.First(i => i.Name == "Name").Value);
+        // mac Linux rider+windows failed
+        Assert.NotEmpty(items);
+        Assert.Equal("test-name", items.First(i => i.Name == "Name").Value);
+
+        var name = Utility.GetDisplayName(typeof(Dummy), "DummyName");
+        Assert.Equal("test-name", name);
     }
 
     [Fact]
@@ -196,7 +232,10 @@ public class JsonStringLocalizerTest : BootstrapBlazorTestBase
 
         var items = localizer.GetAllStrings(false);
         Assert.Equal("姓名", items.First(i => i.Name == "Name").Value);
-        Assert.Empty(items.Where(i => i.Name == "Test-JsonName"));
+        Assert.DoesNotContain("Test-JsonName", items.Select(i => i.Name));
+
+        var resolve = provider.GetRequiredService<ILocalizationResolve>();
+        Assert.Empty(resolve.GetAllStringsByCulture(true));
     }
 
     [Fact]
@@ -209,8 +248,33 @@ public class JsonStringLocalizerTest : BootstrapBlazorTestBase
 
         var provider = sc.BuildServiceProvider();
         var localizer = provider.GetRequiredService<IStringLocalizer<Foo>>();
+
+        // test-localizer-name 通过 MockLocalizationResolve 获得
         Assert.Equal("name", localizer["test-localizer-name"]);
         Assert.Equal("test-name", localizer["test-name"]);
+    }
+
+    [Fact]
+    public void HandleMissingItem()
+    {
+        var sc = new ServiceCollection();
+        sc.AddConfiguration();
+        sc.AddSingleton<ILocalizationMissingItemHandler, MockLocalizationMissingItemHandler>();
+        sc.AddBootstrapBlazor();
+
+        var provider = sc.BuildServiceProvider();
+        var localizer = provider.GetRequiredService<IStringLocalizer<Foo>>();
+        var val = localizer["missing-item"];
+        Assert.True(val.ResourceNotFound);
+
+        var handler = provider.GetRequiredService<ILocalizationMissingItemHandler>();
+        MockLocalizationMissingItemHandler? mockHandler = null;
+        if (handler is MockLocalizationMissingItemHandler h)
+        {
+            mockHandler = h;
+        }
+        Assert.NotNull(mockHandler);
+        Assert.Equal("missing-item", mockHandler.Name);
     }
 
     [Fact]
@@ -249,6 +313,8 @@ public class JsonStringLocalizerTest : BootstrapBlazorTestBase
         Assert.Equal("test", result.Value);
     }
 
+    private static readonly string[] localizationConfigure = ["zh-CN.json"];
+
     [Fact]
     public void Validate_ResourceManagerStringLocalizerType()
     {
@@ -259,8 +325,7 @@ public class JsonStringLocalizerTest : BootstrapBlazorTestBase
         context.Services.AddBootstrapBlazor(localizationConfigure: option =>
         {
             option.ResourceManagerStringLocalizerType = typeof(Foo);
-            option.AdditionalJsonAssemblies = new[] { typeof(Alert).Assembly, GetType().Assembly };
-            option.AdditionalJsonFiles = new string[] { "zh-CN.json" };
+            option.AdditionalJsonFiles = localizationConfigure;
         });
         context.Services.GetRequiredService<ICacheManager>();
 
@@ -278,8 +343,27 @@ public class JsonStringLocalizerTest : BootstrapBlazorTestBase
         var mi = cut.Instance.GetType().GetMethod("ValidateDataAnnotations", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
         var pi = foo.GetType().GetProperty("Name");
         var result = new List<ValidationResult>();
-        mi.Invoke(cut.Instance, new object?[] { null, new ValidationContext(cut.Instance), result, pi, "Name" });
+        mi.Invoke(cut.Instance, [null, new ValidationContext(cut.Instance), result, pi, "Name"]);
         Assert.Equal("Test", result[0].ErrorMessage);
+    }
+
+    [Fact]
+    public void ValidateFixEndlessLoop()
+    {
+        var sc = new ServiceCollection();
+        sc.AddConfiguration();
+        sc.AddBootstrapBlazor();
+        sc.AddSingleton<IStringLocalizerFactory, MockLocalizerFactory>();
+        sc.AddSingleton<IStringLocalizerFactory, MockLocalizerFactory2>();
+
+        var provider = sc.BuildServiceProvider();
+        var localizer = provider.GetRequiredService<IStringLocalizer<Foo>>();
+
+        Assert.Equal("姓名", localizer["Name"]);
+
+        var items = localizer.GetAllStrings(false);
+        Assert.Equal("姓名", items.First(i => i.Name == "Name").Value);
+        Assert.DoesNotContain("Test-JsonName", items.Select(i => i.Name));
     }
 
     private class MockTypeInfo : TypeDelegator
@@ -292,6 +376,37 @@ public class JsonStringLocalizerTest : BootstrapBlazorTestBase
         public IStringLocalizer Create(Type resourceSource) => new MockStringLocalizer();
 
         public IStringLocalizer Create(string baseName, string location) => new MockStringLocalizer();
+    }
+
+    private class MockLocalizerFactory2 : IStringLocalizerFactory
+    {
+        private readonly IServiceProvider _serviceProvider;
+
+        public MockLocalizerFactory2(IServiceProvider serviceProvider)
+        {
+            _serviceProvider = serviceProvider;
+        }
+
+        public IStringLocalizer Create(Type resourceSource)
+        {
+            var stringLocalizerFactorys = _serviceProvider.GetServices<IStringLocalizerFactory>();
+            IStringLocalizerFactory stringLocalizerFactory;
+            if (resourceSource == typeof(Foo))
+            {
+                stringLocalizerFactory = stringLocalizerFactorys.Single(s => s.GetType().Name == "JsonStringLocalizerFactory");
+            }
+            else
+            {
+                stringLocalizerFactory = _serviceProvider.GetServices<IStringLocalizerFactory>().Single(s => s is MockLocalizerFactory);
+            }
+            return stringLocalizerFactory.Create(resourceSource);
+        }
+
+        public IStringLocalizer Create(string baseName, string location)
+        {
+            var stringLocalizerFactory = _serviceProvider.GetServices<IStringLocalizerFactory>().Single(s => s is MockLocalizerFactory);
+            return stringLocalizerFactory.Create(baseName, location);
+        }
     }
 
     private class MockStringLocalizer : IStringLocalizer
@@ -309,14 +424,15 @@ public class JsonStringLocalizerTest : BootstrapBlazorTestBase
 
         public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures) => new List<LocalizedString>()
         {
-            new LocalizedString("Mock-Name", "Mock-Test-Name"),
-            new LocalizedString("Mock-Address", "Mock-Test-Address-{0}"),
-            new LocalizedString("Mock-FakeAddress", "Mock-Test-Address-{ 0}")
+            new("Mock-Name", "Mock-Test-Name"),
+            new("Mock-Address", "Mock-Test-Address-{0}"),
+            new("Mock-FakeAddress", "Mock-Test-Address-{ 0}")
         };
     }
 
     private class Dummy
     {
+        [Display(Name = "Name")]
         public string? DummyName { get; set; }
     }
 
@@ -327,6 +443,23 @@ public class JsonStringLocalizerTest : BootstrapBlazorTestBase
             new("test-localizer-name", "name"),
             new("test-localizer-age", "age")
         };
+
+        public IEnumerable<LocalizedString> GetAllStringsByType(string typeName, bool includeParentCultures) => new LocalizedString[]
+        {
+            new("test-localizer-name", "name"),
+            new("test-localizer-age", "age")
+        };
+    }
+
+    internal class MockLocalizationMissingItemHandler : ILocalizationMissingItemHandler
+    {
+        [NotNull]
+        public string? Name { get; set; }
+
+        public void HandleMissingItem(string name, string typeName, string cultureName)
+        {
+            Name = name;
+        }
     }
 }
 

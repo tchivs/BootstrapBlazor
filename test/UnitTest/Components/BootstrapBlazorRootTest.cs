@@ -1,40 +1,41 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 //using HarmonyLib;
 
 namespace UnitTest.Components;
 
-public class BootstrapBlazorRootTest : BootstrapBlazorTestBase
+public class BootstrapBlazorRootTest : TestBase
 {
     [Fact]
     public void Render_Ok()
     {
-        var cut = Context.RenderComponent<BootstrapBlazorRoot>();
-        cut.Contains("<app>");
+        var context = new TestContext();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
 
-        // 更改 OperatingSystem.IsBrowser 返回值
-        //var harmony = new Harmony("bb");
-        //var original = typeof(OperatingSystem).GetMethod(nameof(OperatingSystem.IsBrowser));
-        //var prefix = typeof(HookOperatingSystem).GetMethod(nameof(HookOperatingSystem.Prefix));
-        //harmony.Patch(original, new HarmonyMethod(prefix));
-
-        //cut.SetParametersAndRender();
-        //cut.DoesNotContain("<app>");
-
-        //harmony.Unpatch(original, prefix);
+        var sc = context.Services;
+        sc.AddBootstrapBlazor();
+        sc.ConfigureJsonLocalizationOptions(op =>
+        {
+            op.IgnoreLocalizerMissing = false;
+        });
+        sc.AddScoped<IRootComponentGenerator, MockGenerator>();
+        var cut = context.RenderComponent<BootstrapBlazorRoot>();
+        cut.Contains("<div class=\"auto-generator\"></div>");
     }
 
-    private class HookOperatingSystem
+    class MockGenerator : IRootComponentGenerator
     {
-        public static bool Prefix(ref bool __result)
+        /// <summary>
+        /// <inheritdoc/>
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        public RenderFragment Generator() => builder =>
         {
-            // 更改结果为 true
-            __result = true;
-
-            // 不再调用原生方法
-            return false;
-        }
+            builder.AddContent(0, new MarkupString("<div class=\"auto-generator\"></div>"));
+        };
     }
 }

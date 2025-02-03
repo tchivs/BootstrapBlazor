@@ -11,15 +11,32 @@ const Popover = {
                 dropdownSelector: '.dropdown-menu',
                 isDisabled: () => {
                     return isDisabled(el) || isDisabled(el.parentNode) || isDisabled(el.querySelector('.form-control'))
-                }
+                },
+                initCallback: null
             },
             ...config || {}
         }
+        const createPopover = () => {
+            if (!popover.isDisabled()) {
+                popover.popover = bootstrap.Popover.getInstance(popover.toggleElement);
+                if (popover.popover === null) {
+                    popover.popover = new bootstrap.Popover(popover.toggleElement)
+                    hackPopover(popover.popover, popover.class)
+                    if (popover.initCallback) {
+                        popover.initCallback();
+                    }
+                }
+            }
+        }
+
         popover.toggleElement = el.querySelector(popover.toggleClass)
         popover.isPopover = popover.toggleElement.getAttribute('data-bs-toggle') === 'bb.dropdown'
         popover.toggleMenu = el.querySelector(popover.dropdownSelector)
         popover.isShown = () => {
-            return popover.popover && popover.popover._isShown();
+            if (popover.popover === void 0) {
+                createPopover();
+            }
+            return popover.popover._isShown();
         }
 
         popover.setCustomClass = () => {
@@ -89,19 +106,14 @@ const Popover = {
                 if (popover.hasDisplayNone) {
                     popover.toggleMenu.classList.add("d-none");
                 }
+
+                popover.popover.tip.classList.remove('show');
                 el.classList.remove('show');
                 el.append(popover.toggleMenu);
             }
 
             const active = e => {
-                if (!popover.isDisabled()) {
-                    popover.popover = bootstrap.Popover.getInstance(popover.toggleElement);
-                    if (!popover.popover) {
-                        popover.popover = new bootstrap.Popover(popover.toggleElement)
-                        hackPopover(popover.popover, popover.class)
-                        popover.popover.toggle()
-                    }
-                }
+                createPopover();
 
                 if (popover.clickToggle) {
                     popover.clickToggle(e)
@@ -143,6 +155,15 @@ const Popover = {
 
                 EventHandler.on(document, 'click', closePopover);
             }
+
+            // update handler
+            if (popover.toggleMenu) {
+                const observer = new ResizeObserver(() => {
+                    popover.popover && popover.popover.update()
+                });
+                observer.observe(popover.toggleMenu)
+                popover.observer = observer
+            }
         }
         else {
             const show = e => {
@@ -153,6 +174,8 @@ const Popover = {
             }
 
             EventHandler.on(el, 'show.bs.dropdown', show)
+
+            popover.popover = bootstrap.Dropdown.getOrCreateInstance(popover.toggleElement);
         }
 
         return popover
@@ -160,6 +183,13 @@ const Popover = {
 
     dispose(popover) {
         if (popover.isPopover) {
+            popover.observer.disconnect()
+            delete popover.observer
+
+            if (popover.popover) {
+                popover.popover.dispose()
+                delete popover.popover
+            }
             EventHandler.off(popover.el, 'show.bs.popover')
             EventHandler.off(popover.el, 'inserted.bs.popover')
             EventHandler.off(popover.el, 'hide.bs.popover')

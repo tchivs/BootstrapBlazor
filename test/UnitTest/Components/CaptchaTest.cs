@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 public class CaptchaTest : BootstrapBlazorTestBase
@@ -22,10 +23,10 @@ public class CaptchaTest : BootstrapBlazorTestBase
                 return Task.CompletedTask;
             });
         });
-        await cut.InvokeAsync(() => cut.Instance.Verify(10, new List<int> { 1, 2, 3, 4, 1 }));
+        await cut.InvokeAsync(() => cut.Instance.Verify(10, [1, 2, 3, 4, 1]));
         Assert.True(verify);
 
-        await cut.InvokeAsync(() => cut.Instance.Verify(10, new List<int> { 1, 2, 3, 4 }));
+        await cut.InvokeAsync(() => cut.Instance.Verify(10, [1, 2, 3, 4]));
         Assert.False(verify);
 
         cut.SetParametersAndRender(pb =>
@@ -33,7 +34,7 @@ public class CaptchaTest : BootstrapBlazorTestBase
             pb.Add(a => a.Offset, 5);
             pb.Add(a => a.OnValidAsync, null);
         });
-        await cut.InvokeAsync(() => cut.Instance.Verify(10, new List<int> { 1, 2, 3, 4, 1 }));
+        await cut.InvokeAsync(() => cut.Instance.Verify(10, [1, 2, 3, 4, 1]));
     }
 
     [Fact]

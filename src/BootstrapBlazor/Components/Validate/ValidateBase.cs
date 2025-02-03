@@ -1,8 +1,10 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Extensions.Localization;
 using System.Reflection;
 
 namespace BootstrapBlazor.Components;
@@ -25,7 +27,7 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
     protected string? PreviousErrorMessage { get; set; }
 
     /// <summary>
-    /// Gets the associated <see cref="EditContext"/>.
+    /// Gets the associated <see cref="EditContext"/>
     /// </summary>
     protected EditContext? EditContext { get; set; }
 
@@ -37,7 +39,9 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
     /// <summary>
     /// 获得/设置 数据合规样式
     /// </summary>
-    protected string? ValidCss => IsValid.HasValue ? (IsValid.Value ? "is-valid" : "is-invalid") : null;
+    protected string? ValidCss => IsValid.HasValue ? GetValidString(IsValid.Value) : null;
+
+    private static string GetValidString(bool valid) => valid ? "is-valid" : "is-invalid";
 
     /// <summary>
     /// 获得/设置 组件是否合规 默认为 null 未检查
@@ -57,7 +61,7 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
     /// <summary>
     /// Gets or sets the current value of the input.
     /// </summary>
-    protected TValue CurrentValue
+    protected TValue? CurrentValue
     {
         get => Value;
         set
@@ -146,7 +150,7 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
     /// 获得/设置 Value 改变时回调方法
     /// </summary>
     [Parameter]
-    public Func<TValue, Task>? OnValueChanged { get; set; }
+    public Func<TValue?, Task>? OnValueChanged { get; set; }
 
     /// <summary>
     /// 获得/设置 类型转化失败格式化字符串 默认为 null
@@ -168,10 +172,29 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
     public bool IsDisabled { get; set; }
 
     /// <summary>
+    /// 获得/设置 是否显示必填项标记 默认为 null 未设置
+    /// </summary>
+    [Parameter]
+    public bool? ShowRequired { get; set; }
+
+    /// <summary>
+    /// 获得/设置 必填项错误文本 默认为 null 未设置
+    /// </summary>
+    [Parameter]
+    public string? RequiredErrorMessage { get; set; }
+
+    /// <summary>
     /// 获得 父组件的 EditContext 实例
     /// </summary>
     [CascadingParameter]
     protected EditContext? CascadedEditContext { get; set; }
+
+    [Inject, NotNull]
+    private IStringLocalizer<ValidateBase<string>>? Localizer { get; set; }
+
+    [Inject]
+    [NotNull]
+    private IStringLocalizerFactory? LocalizerFactory { get; set; }
 
     /// <summary>
     /// Parses a string to create an instance of <typeparamref name="TValue"/>. Derived classes can override this to change how
@@ -185,7 +208,7 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
     {
         var ret = false;
         validationErrorMessage = null;
-        if (value.TryConvertTo<TValue>(out result))
+        if (value.TryConvertTo(out result))
         {
             ret = true;
         }
@@ -203,20 +226,24 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
     /// <returns></returns>
     protected virtual string? FormatParsingErrorMessage() => ParsingErrorMessage;
 
-    private bool IsRequired() => FieldIdentifier
+    /// <summary>
+    /// 判断是否为必填字段
+    /// </summary>
+    /// <returns></returns>
+    protected virtual bool IsRequired() => ShowRequired ?? FieldIdentifier
         ?.Model.GetType().GetPropertyByName(FieldIdentifier.Value.FieldName)!.GetCustomAttribute<RequiredAttribute>(true) != null
-        || (ValidateRules?.OfType<FormItemValidator>().Select(i => i.Validator).OfType<RequiredAttribute>().Any() ?? false);
+        || (ValidateRules?.OfType<FormItemValidator>().Select(i => i.IsRequired).Any() ?? false)
+        || (ValidateRules?.OfType<RequiredValidator>().Any() ?? false);
 
     /// <summary>
     /// Gets a string that indicates the status of the field being edited. This will include
     /// some combination of "modified", "valid", or "invalid", depending on the status of the field.
     /// </summary>
-    private string FieldClass => (EditContext != null && FieldIdentifier != null) ? EditContext.FieldCssClass(FieldIdentifier.Value) : "";
+    protected string FieldClass => (EditContext != null && FieldIdentifier != null) ? EditContext.FieldCssClass(FieldIdentifier.Value) : "";
 
     /// <summary>
     /// Gets a CSS class string that combines the <c>class</c> attribute and <see cref="FieldClass"/>
-    /// properties. Derived components should typically use this value for the primary HTML element's
-    /// 'class' attribute.
+    /// properties. Derived components should typically use this value for the primary HTML element's class attribute.
     /// </summary>
     protected string? CssClass => CssBuilder.Default()
         .AddClass(FieldClass, IsNeedValidate)
@@ -271,6 +298,32 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
         base.OnParametersSet();
 
         Required = (IsNeedValidate && !string.IsNullOrEmpty(DisplayText) && (ValidateForm?.ShowRequiredMark ?? false) && IsRequired()) ? "true" : null;
+
+        if (ShowRequired is true)
+        {
+            Rules.Add(new RequiredValidator() { ErrorMessage = RequiredErrorMessage ?? GetDefaultRequiredErrorMessage() });
+        }
+
+        if (ValidateForm != null)
+        {
+            // IValidateCollection 支持组件间联动验证
+            var fieldName = FieldIdentifier?.FieldName;
+            if (!string.IsNullOrEmpty(fieldName))
+            {
+                var item = ValidateForm.InvalidMemberNames.Find(i => i.MemberNames.Any(m => m == fieldName));
+                if (item != null)
+                {
+                    ValidateForm.InvalidMemberNames.Remove(item);
+                    IsValid = false;
+                    ErrorMessage = item.ErrorMessage;
+                }
+                else if (ValidateForm.ValidMemberNames.Remove(fieldName))
+                {
+                    IsValid = true;
+                    ErrorMessage = null;
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -295,11 +348,19 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
         }
     }
 
+    private string? _defaultRequiredErrorMessage;
+
+    private string GetDefaultRequiredErrorMessage()
+    {
+        _defaultRequiredErrorMessage ??= Localizer["DefaultRequiredErrorMessage"];
+        return _defaultRequiredErrorMessage;
+    }
+
     #region Validation
     /// <summary>
     /// 获得 数据验证方法集合
     /// </summary>
-    protected List<IValidator> Rules { get; } = new();
+    protected List<IValidator> Rules { get; } = [];
 
     /// <summary>
     /// 获得/设置 自定义验证集合
@@ -316,15 +377,10 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
     /// <inheritdoc/>
     /// </summary>
     /// <returns></returns>
-    public virtual bool IsComplexValue(object? propertyValue) => propertyValue != null
-        && propertyValue is not string
-        && !propertyValue.GetType().IsAssignableTo(typeof(System.Collections.IEnumerable))
-        && propertyValue.GetType().IsClass;
-
-    /// <summary>
-    /// 获得/设置 是否执行了自定义异步验证
-    /// </summary>
-    protected bool IsAsyncValidate { get; set; }
+    public virtual bool IsComplexValue(object? value) => value != null
+        && value is not string
+        && !value.GetType().IsAssignableTo(typeof(System.Collections.IEnumerable))
+        && value.GetType().IsClass;
 
     /// <summary>
     /// 属性验证方法
@@ -348,7 +404,6 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
                     if (validator is IValidatorAsync v)
                     {
                         await v.ValidateAsync(propertyValue, context, results);
-                        IsAsyncValidate = true;
                     }
                     else
                     {
@@ -369,7 +424,6 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
                     if (validator is IValidatorAsync v)
                     {
                         await v.ValidateAsync(propertyValue, context, results);
-                        IsAsyncValidate = true;
                     }
                     else
                     {
@@ -377,6 +431,13 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
                     }
                     if (results.Count > 0)
                     {
+                        var memberName = results[0].MemberNames.FirstOrDefault() ?? context.MemberName;
+                        if (!string.IsNullOrEmpty(memberName))
+                        {
+                            var result = new ValidationResult(results[0].ErrorMessage, [memberName]);
+                            results.Clear();
+                            results.Add(result);
+                        }
                         break;
                     }
                 }
@@ -388,13 +449,10 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
     {
         // 增加数据基础类型验证 如泛型约定为 int 文本框值为 Empty
         // 可为空泛型约束时不检查
-        if (NullableUnderlyingType == null)
+        if (NullableUnderlyingType == null && PreviousParsingAttemptFailed)
         {
-            if (PreviousParsingAttemptFailed)
-            {
-                var memberNames = new string[] { context.MemberName! };
-                results.Add(new ValidationResult(PreviousErrorMessage, memberNames));
-            }
+            var memberNames = new string[] { context.MemberName! };
+            results.Add(new ValidationResult(PreviousErrorMessage, memberNames));
         }
     }
 
@@ -402,8 +460,7 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
     /// 显示/隐藏验证结果方法
     /// </summary>
     /// <param name="results"></param>
-    /// <param name="validProperty">是否对本属性进行数据验证</param>
-    public virtual void ToggleMessage(IEnumerable<ValidationResult> results, bool validProperty)
+    public virtual void ToggleMessage(IEnumerable<ValidationResult> results)
     {
         if (FieldIdentifier != null)
         {
@@ -422,16 +479,13 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
             OnValidate(IsValid);
         }
 
-        if (IsAsyncValidate)
-        {
-            IsAsyncValidate = false;
-            StateHasChanged();
-        }
+        // 必须刷新一次 UI 保证状态正确
+        StateHasChanged();
     }
 
     private JSModule? ValidateModule { get; set; }
 
-    private Task<JSModule> LoadValidateModule() => JSRuntime.LoadModule("./_content/BootstrapBlazor/modules/validate.js");
+    private Task<JSModule> LoadValidateModule() => JSRuntime.LoadModuleByName("validate");
 
     /// <summary>
     /// 增加客户端 Tooltip 方法
@@ -492,6 +546,21 @@ public abstract class ValidateBase<TValue> : DisplayBase<TValue>, IValidateCompo
         }
 
         await base.DisposeAsync(disposing);
+    }
+
+    /// <summary>
+    /// 增加 <see cref="RequiredValidator"/> 方法
+    /// </summary>
+    protected virtual void AddRequiredValidator()
+    {
+        if (EditContext != null && FieldIdentifier != null)
+        {
+            var validator = FieldIdentifier.Value.GetRequiredValidator(LocalizerFactory);
+            if (validator != null)
+            {
+                Rules.Add(validator);
+            }
+        }
     }
     #endregion
 

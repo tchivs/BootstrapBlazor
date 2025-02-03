@@ -1,11 +1,12 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// 
+/// SingleUploadBase 基类
 /// </summary>
 /// <typeparam name="TValue"></typeparam>
 public abstract class SingleUploadBase<TValue> : MultipleUploadBase<TValue>
@@ -17,9 +18,19 @@ public abstract class SingleUploadBase<TValue> : MultipleUploadBase<TValue>
     public bool IsSingle { get; set; }
 
     /// <summary>
+    /// 获得/设置 最大上传个数 默认为最大值 <see cref="int.MaxValue"/>
+    /// </summary>
+    [Parameter]
+    public int Max { get; set; } = int.MaxValue;
+
+    /// <summary>
     /// 是否显示上传组件
     /// </summary>
-    protected bool CanUpload => !(IsSingle && GetUploadFiles().Count > 0);
+    protected bool CheckCanUpload()
+    {
+        var count = GetUploadFiles().Count;
+        return IsSingle ? count < 1 : count < Max;
+    }
 
     /// <summary>
     /// 获得当前图片集合
@@ -30,11 +41,11 @@ public abstract class SingleUploadBase<TValue> : MultipleUploadBase<TValue>
         var ret = new List<UploadFile>();
         if (IsSingle)
         {
-            if (DefaultFileList?.Any() ?? false)
+            if (DefaultFileList != null && DefaultFileList.Count != 0)
             {
                 ret.Add(DefaultFileList.First());
             }
-            if (ret.Count == 0 && UploadFiles.Any())
+            if (ret.Count == 0 && UploadFiles.Count != 0)
             {
                 ret.Add(UploadFiles.First());
             }
@@ -90,5 +101,17 @@ public abstract class SingleUploadBase<TValue> : MultipleUploadBase<TValue>
             }
         }
         return ret;
+    }
+
+    /// <summary>
+    /// 更新上传进度方法
+    /// </summary>
+    /// <param name="file"></param>
+    protected void Update(UploadFile file)
+    {
+        if (GetShowProgress(file))
+        {
+            StateHasChanged();
+        }
     }
 }

@@ -3,16 +3,11 @@
   <Import Project="..\Directory.Build.props" />
 
   <PropertyGroup>
-    <RepositoryUrl>https://github.com/dotnetcore/BootstrapBlazor.git</RepositoryUrl>
-    <PackageProjectUrl>https://www.blazor.zone</PackageProjectUrl>
-    <RepositoryType>github</RepositoryType>
-    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <DocumentationFile>$(MSBuildProjectName).xml</DocumentationFile>
   </PropertyGroup>
 
   <PropertyGroup>
-    <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
-    <NoWarn>NETSDK1138</NoWarn>
+    <NoWarn>CS8002</NoWarn>
   </PropertyGroup>
 
 </Project>

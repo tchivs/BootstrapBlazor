@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -9,12 +10,23 @@ namespace BootstrapBlazor.Components;
 /// </summary>
 public partial class Collapse
 {
-    private static string? GetButtonClassString(CollapseItem item) => CssBuilder.Default("accordion-button")
+    private static string? GetHeaderButtonClassString(CollapseItem item) => CssBuilder.Default("accordion-button")
         .AddClass("collapsed", item.IsCollapsed)
+        .AddClass($"bg-{item.TitleColor.ToDescriptionString()}", item.TitleColor != Color.None)
         .Build();
 
-    private static string? GetClassString(bool collpased) => CssBuilder.Default("accordion-collapse collapse")
-        .AddClass("show", !collpased)
+    private static string? GetItemIconString(CollapseItem item) => CssBuilder.Default("accordion-item-icon")
+        .AddClass(item.Icon)
+        .Build();
+
+    private static string? GetHeaderClassString(CollapseItem item) => CssBuilder.Default("accordion-header")
+        .AddClass("collapsed", item.IsCollapsed)
+        .AddClass($"bg-{item.TitleColor.ToDescriptionString()}", item.TitleColor != Color.None)
+        .AddClass(item.HeaderClass)
+        .Build();
+
+    private static string? GetClassString(bool collapsed) => CssBuilder.Default("accordion-collapse collapse")
+        .AddClass("show", !collapsed)
         .Build();
 
     private string? ClassString => CssBuilder.Default("accordion")

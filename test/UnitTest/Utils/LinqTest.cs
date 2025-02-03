@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Utils;
 
@@ -11,28 +12,28 @@ public class LinqTest
     {
         var foo1 = new Dummy[]
         {
-            new Dummy()
+            new()
             {
                 Name = "Test1",
-                Items = new List<string>() { "Test_Item_1" }
+                Items = ["Test_Item_1"]
             },
-            new Dummy()
+            new()
             {
                 Name = "Test2",
-                Items = new List<string>() { "Test_Item_4" }
+                Items = ["Test_Item_4"]
             }
         };
         var foo2 = new Dummy[]
         {
-            new Dummy()
+            new()
             {
                 Name = "Test1",
-                Items = new List<string>() { "Test_Item_2", "Test_Item_3" }
+                Items = ["Test_Item_2", "Test_Item_3"]
             },
-            new Dummy()
+            new()
             {
                 Name = "Test2",
-                Items = new List<string>() { "Test_Item_5", "Test_Item_6" }
+                Items = ["Test_Item_5", "Test_Item_6"]
             }
         };
 
@@ -48,13 +49,13 @@ public class LinqTest
             };
         });
         Assert.Equal(2, foo3.Count());
-        Assert.Equal(new List<string>() { "Test_Item_1", "Test_Item_2", "Test_Item_3" }, foo3.First().Items);
+        Assert.Equal(["Test_Item_1", "Test_Item_2", "Test_Item_3"], foo3.First().Items);
     }
 
     private class Dummy
     {
         public string? Name { get; set; }
 
-        public List<string> Items { get; set; } = new List<string>();
+        public List<string> Items { get; set; } = [];
     }
 }

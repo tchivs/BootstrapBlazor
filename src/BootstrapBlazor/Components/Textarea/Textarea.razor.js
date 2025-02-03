@@ -1,4 +1,5 @@
-﻿import Data from "../../modules/data.js"
+﻿import { select, handleKeyUp, selectAllByFocus, selectAllByEnter } from "../Input/BootstrapInput.razor.js"
+import Data from "../../modules/data.js"
 
 export function init(id) {
     const text = {
@@ -12,26 +13,30 @@ export function init(id) {
 export function execute(id, method, position) {
     const text = Data.get(id)
 
-    const autoScroll = text.element.getAttribute('data-bb-scroll') === 'auto'
-    if (method === 'update') {
-        method = text.prevMethod
-    }
-    if (method === 'toTop') {
-        position = 0;
-    }
-    if (autoScroll || method === 'toBottom') {
-        position = text.element.scrollHeight
-    }
+    if (text) {
+        const autoScroll = text.element.getAttribute('data-bb-scroll') === 'auto'
+        if (method === 'update') {
+            method = text.prevMethod
+        }
+        if (method === 'toTop') {
+            position = 0;
+        }
+        if (autoScroll || method === 'toBottom') {
+            position = text.element.scrollHeight
+        }
 
-    if (!isNaN(position)) {
-        text.element.scrollTop = position;
-    }
+        if (!isNaN(position)) {
+            text.element.scrollTop = position;
+        }
 
-    if (method !== 'update') {
-        text.prevMethod = method;
+        if (method !== 'update') {
+            text.prevMethod = method;
+        }
     }
 }
 
 export function dispose(id) {
     Data.remove(id)
 }
+
+export { select, handleKeyUp, selectAllByFocus, selectAllByEnter }

@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using System.Collections.Concurrent;
 using System.Data;
@@ -146,12 +147,12 @@ public class DataTableDynamicContext : DynamicObjectContext
     /// 获得列信息方法
     /// </summary>
     /// <returns></returns>
-    private IEnumerable<ITableColumn> InternalGetColumns()
+    private List<ITableColumn> InternalGetColumns()
     {
-        var ret = new List<InternalTableColumn>();
+        var ret = new List<ITableColumn>();
         foreach (DataColumn col in DataTable.Columns)
         {
-            ret.Add(new InternalTableColumn(col.ColumnName, col.DataType));
+            ret.Add(new InternalTableColumn(col.ColumnName, col.DataType, col.Caption));
         }
         return ret;
     }

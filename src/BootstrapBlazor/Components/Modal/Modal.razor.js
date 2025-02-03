@@ -1,22 +1,16 @@
-﻿import { drag, getHeight, getWidth } from "../../modules/utility.js"
-import Data from "../../modules/data.js"
+﻿import Data from "../../modules/data.js"
 import EventHandler from "../../modules/event-handler.js"
 
 export function init(id, invoke, shownCallback, closeCallback) {
     const el = document.getElementById(id)
     const modal = {
-        element: el,
+        el,
         invoke,
         shownCallback,
         closeCallback,
         pop: () => {
-            if (modal.modal) {
-                modal.modal._dialog.remove()
-                modal.modal.dispose()
-                modal.modal = null
-                document.body.classList.remove('modal-open');
-                document.body.style.paddingRight = '';
-                document.body.style.overflow = '';
+            if (modal) {
+                modal.hide();
             }
         }
     }
@@ -25,7 +19,7 @@ export function init(id, invoke, shownCallback, closeCallback) {
     EventHandler.on(el, 'shown.bs.modal', () => {
         invoke.invokeMethodAsync(shownCallback)
     })
-    EventHandler.on(el, 'hide.bs.modal', e => {
+    EventHandler.on(el, 'hidden.bs.modal', e => {
         e.stopPropagation();
         if (modal.draggable) {
             modal.dialog.style.width = ''
@@ -39,19 +33,22 @@ export function init(id, invoke, shownCallback, closeCallback) {
     EventHandler.on(window, 'popstate', modal.pop)
 
     modal.show = () => {
-        const dialogs = modal.element.querySelectorAll('.modal-dialog')
+        const dialogs = el.querySelectorAll('.modal-dialog')
         if (dialogs.length === 1) {
-            let backdrop = modal.element.getAttribute('data-bs-backdrop') !== 'static'
+            let backdrop = el.getAttribute('data-bs-backdrop') !== 'static'
             if (!backdrop) {
                 backdrop = 'static'
             }
             if (!modal.modal) {
-                modal.modal = bootstrap.Modal.getOrCreateInstance(modal.element, { focus: false })
+                modal.modal = bootstrap.Modal.getOrCreateInstance(el)
+                // hack: fix focusin event
+                modal.modal._focustrap._handleFocusin = e => { }
             }
-            modal.modal._config.keyboard = modal.element.getAttribute('data-bs-keyboard') === 'true'
+            modal.modal._config.keyboard = el.getAttribute('data-bs-keyboard') === 'true'
             modal.modal._config.backdrop = backdrop
             modal.modal.show()
-        } else {
+        }
+        else {
             modal.invoke.invokeMethodAsync(modal.shownCallback)
 
             modal.modal._config.keyboard = false
@@ -59,66 +56,13 @@ export function init(id, invoke, shownCallback, closeCallback) {
 
             modal.handlerKeyboardAndBackdrop()
         }
-
-        modal.dialog = dialogs[dialogs.length - 1]
-        modal.draggable = modal.dialog.classList.contains('is-draggable')
-        if (modal.draggable) {
-            modal.disposeDrag()
-
-            modal.originX = 0;
-            modal.originY = 0;
-            modal.dialogWidth = 0;
-            modal.dialogHeight = 0;
-            modal.pt = { top: 0, left: 0 };
-
-            modal.header = modal.dialog.querySelector('.modal-header')
-            drag(modal.header,
-                e => {
-                    if (e.srcElement.closest('.modal-header-buttons')) {
-                        return true
-                    }
-                    modal.originX = e.clientX || e.touches[0].clientX;
-                    modal.originY = e.clientY || e.touches[0].clientY;
-
-                    const rect = modal.dialog.querySelector('.modal-content').getBoundingClientRect()
-                    modal.dialogWidth = rect.width
-                    modal.dialogHeight = rect.height
-                    modal.pt.top = rect.top
-                    modal.pt.left = rect.left
-
-                    modal.dialog.style.margin = `${modal.pt.top}px 0 0 ${modal.pt.left}px`
-                    modal.dialog.style.width = `${modal.dialogWidth}px`
-                    modal.dialog.classList.add('is-drag')
-                },
-                e => {
-                    if (modal.dialog.classList.contains('is-drag')) {
-                        const eventX = e.clientX || e.changedTouches[0].clientX;
-                        const eventY = e.clientY || e.changedTouches[0].clientY;
-
-                        let newValX = modal.pt.left + Math.ceil(eventX - modal.originX);
-                        let newValY = modal.pt.top + Math.ceil(eventY - modal.originY);
-
-                        if (newValX <= 0) newValX = 0;
-                        if (newValY <= 0) newValY = 0;
-
-                        if (newValX + modal.dialogWidth < window.innerWidth) {
-                            modal.dialog.style.marginLeft = `${newValX}px`
-                        }
-                        if (newValY + modal.dialogHeight < window.innerHeight) {
-                            modal.dialog.style.marginTop = `${newValY}px`
-                        }
-                    }
-                },
-                e => {
-                    modal.dialog.classList.remove('is-drag')
-                })
-        }
     }
 
     modal.hide = () => {
-        if (modal.element.children.length === 1) {
-            modal.modal.hide()
-        } else {
+        if (el.children.length === 1) {
+            modal.modal.hide();
+        }
+        else {
             modal.invoke.invokeMethodAsync(modal.closeCallback)
         }
     }
@@ -126,7 +70,8 @@ export function init(id, invoke, shownCallback, closeCallback) {
     modal.toggle = () => {
         if (modal.modal) {
             modal.modal.toggle()
-        } else {
+        }
+        else {
             modal.show()
         }
     }
@@ -137,7 +82,7 @@ export function init(id, invoke, shownCallback, closeCallback) {
 
             modal.handlerEscape = e => {
                 if (e.key === 'Escape') {
-                    const keyboard = modal.element.getAttribute('data-bs-keyboard')
+                    const keyboard = el.getAttribute('data-bs-keyboard')
                     if (keyboard === 'true') {
                         modal.hide()
                     }
@@ -145,9 +90,9 @@ export function init(id, invoke, shownCallback, closeCallback) {
             }
 
             EventHandler.on(document, 'keyup', modal.handlerEscape)
-            EventHandler.on(modal.element, 'click', e => {
+            EventHandler.on(el, 'click', e => {
                 if (e.target.closest('.modal-dialog') === null) {
-                    const backdrop = modal.element.getAttribute('data-bs-backdrop')
+                    const backdrop = el.getAttribute('data-bs-backdrop')
                     if (backdrop !== 'static') {
                         modal.hide()
                     }
@@ -169,9 +114,11 @@ export function execute(id, method) {
     const modal = Data.get(id)
     if (method === 'show') {
         modal.show()
-    } else if (method === 'hide') {
+    }
+    else if (method === 'hide') {
         modal.hide()
-    } else if (method === 'toggle') {
+    }
+    else if (method === 'toggle') {
         modal.toggle()
     }
 }
@@ -180,20 +127,18 @@ export function dispose(id) {
     const modal = Data.get(id)
     Data.remove(id)
 
-    if (modal.draggable) {
-        modal.disposeDrag()
-    }
+    if (modal) {
+        EventHandler.off(modal.el, 'shown.bs.modal')
+        EventHandler.off(modal.el, 'hidden.bs.modal')
+        EventHandler.off(modal.el, 'click')
 
-    EventHandler.off(modal.element, 'shown.bs.modal')
-    EventHandler.off(modal.element, 'hide.bs.modal')
-    EventHandler.off(modal.element, 'click')
+        if (modal.hook_keyboard_backdrop) {
+            EventHandler.off(document, 'keyup', modal.handlerEscape)
+        }
 
-    if (modal.hook_keyboard_backdrop) {
-        EventHandler.off(document, 'keyup', modal.handlerEscape)
-    }
-
-    EventHandler.off(window, 'popstate', modal.pop)
-    if (modal.modal) {
-        modal.modal.dispose()
+        EventHandler.off(window, 'popstate', modal.pop)
+        if (modal.modal) {
+            modal.modal.dispose()
+        }
     }
 }

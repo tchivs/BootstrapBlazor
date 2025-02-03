@@ -1,9 +1,10 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using BootstrapBlazor.Localization.Json;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using System.Collections;
 using System.Globalization;
@@ -43,17 +44,24 @@ public class RequiredValidator : ValidatorBase
     /// <param name="results">ValidateResult 集合实例</param>
     public override void Validate(object? propertyValue, ValidationContext context, List<ValidationResult> results)
     {
-        var errorMessage = GetLocalizerErrorMessage(context, LocalizerFactory, Options);
-        var memberNames = string.IsNullOrEmpty(context.MemberName) ? null : new string[] { context.MemberName };
+        if (string.IsNullOrEmpty(ErrorMessage))
+        {
+            var localizer = context.GetRequiredService<IStringLocalizer<ValidateBase<string>>>();
+            var l = localizer["DefaultRequiredErrorMessage"];
+            if (!l.ResourceNotFound)
+            {
+                ErrorMessage = l.Value;
+            }
+        }
         if (propertyValue == null)
         {
-            results.Add(new ValidationResult(errorMessage, memberNames));
+            results.Add(GetValidationResult(context));
         }
         else if (propertyValue is string val)
         {
             if (!AllowEmptyString && val == string.Empty)
             {
-                results.Add(new ValidationResult(errorMessage, memberNames));
+                results.Add(GetValidationResult(context));
             }
         }
         else if (propertyValue is IEnumerable v)
@@ -62,9 +70,19 @@ public class RequiredValidator : ValidatorBase
             var valid = enumerator.MoveNext();
             if (!valid)
             {
-                results.Add(new ValidationResult(errorMessage, memberNames));
+                results.Add(GetValidationResult(context));
             }
         }
+        else if (propertyValue is DateTimeRangeValue dv && dv is { NullStart: null, NullEnd: null })
+        {
+            results.Add(GetValidationResult(context));
+        }
+    }
+
+    private ValidationResult GetValidationResult(ValidationContext context)
+    {
+        var errorMessage = GetLocalizerErrorMessage(context, LocalizerFactory, Options);
+        return context.GetValidationResult(errorMessage);
     }
 
     /// <summary>
@@ -82,8 +100,8 @@ public class RequiredValidator : ValidatorBase
     /// <returns></returns>
     protected virtual string? GetLocalizerErrorMessage(ValidationContext context, IStringLocalizerFactory? localizerFactory = null, JsonLocalizationOptions? options = null)
     {
-        var errorMesssage = ErrorMessage;
-        if (!string.IsNullOrEmpty(context.MemberName) && !string.IsNullOrEmpty(errorMesssage))
+        var errorMessage = ErrorMessage;
+        if (!string.IsNullOrEmpty(context.MemberName) && !string.IsNullOrEmpty(errorMessage))
         {
             // 查找 resx 资源文件中的 ErrorMessage
             var memberName = context.MemberName;
@@ -95,9 +113,9 @@ public class RequiredValidator : ValidatorBase
                 if (options is { ResourceManagerStringLocalizerType: not null })
                 {
                     var localizer = localizerFactory.Create(options.ResourceManagerStringLocalizerType);
-                    if (localizer.TryGetLocalizerString(errorMesssage, out var resx))
+                    if (localizer.TryGetLocalizerString(errorMessage, out var resx))
                     {
-                        errorMesssage = resx;
+                        errorMessage = resx;
                         isResx = true;
                     }
                 }
@@ -105,16 +123,16 @@ public class RequiredValidator : ValidatorBase
                 // 查找 json 格式资源文件
                 if (!isResx && localizerFactory.Create(context.ObjectType).TryGetLocalizerString($"{memberName}.{GetRuleKey()}", out var msg))
                 {
-                    errorMesssage = msg;
+                    errorMessage = msg;
                 }
             }
 
-            if (!string.IsNullOrEmpty(errorMesssage))
+            if (!string.IsNullOrEmpty(errorMessage))
             {
                 var displayName = new FieldIdentifier(context.ObjectInstance, context.MemberName).GetDisplayName();
-                errorMesssage = string.Format(CultureInfo.CurrentCulture, errorMesssage, displayName);
+                errorMessage = string.Format(CultureInfo.CurrentCulture, errorMessage, displayName);
             }
         }
-        return errorMesssage;
+        return errorMessage;
     }
 }

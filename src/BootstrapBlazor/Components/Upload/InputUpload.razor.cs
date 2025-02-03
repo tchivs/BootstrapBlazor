@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Localization;
@@ -8,7 +9,7 @@ using Microsoft.Extensions.Localization;
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// 
+/// InputUpload 组件
 /// </summary>
 public partial class InputUpload<TValue>
 {
@@ -152,8 +153,7 @@ public partial class InputUpload<TValue>
     /// <inheritdoc/>
     /// </summary>
     /// <param name="results"></param>
-    /// <param name="validProperty"></param>
-    public override void ToggleMessage(IEnumerable<ValidationResult> results, bool validProperty)
+    public override void ToggleMessage(IEnumerable<ValidationResult> results)
     {
         if (results.Any())
         {

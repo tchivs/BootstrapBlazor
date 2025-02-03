@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -13,9 +14,8 @@ public partial class Dropdown<TValue>
     /// 获得 按钮弹出方向集合
     /// </summary>
     /// <returns></returns>
-    private string? DirectionClassName => CssBuilder.Default()
-        .AddClass($"btn-group", DropdownType == DropdownType.ButtonGroup)
-        .AddClass(Direction.ToDescriptionString(), DropdownType == DropdownType.DropdownMenu)
+    private string? DirectionClassName => CssBuilder.Default("btn-group")
+        .AddClass(Direction.ToDescriptionString())
         .AddClass($"{Direction.ToDescriptionString()}-center", MenuAlignment == Alignment.Center && (Direction == Direction.Dropup || Direction == Direction.Dropdown))
         .AddClassFromAttributes(AdditionalAttributes)
         .Build();
@@ -44,7 +44,7 @@ public partial class Dropdown<TValue>
     /// <summary>
     /// 获得 是否分裂式按钮
     /// </summary>
-    private string? DropdownToggle => !ShowSplit ? "dropdown" : null;
+    private string? DropdownToggle => !ShowSplit ? ToggleString : null;
 
     /// <summary>
     /// 菜单对齐方式样式
@@ -60,6 +60,15 @@ public partial class Dropdown<TValue>
     /// <returns></returns>
     protected string? ActiveItem(SelectedItem item) => CssBuilder.Default("dropdown-item")
         .AddClass("active", () => item.Value == CurrentValueAsString)
+        .Build();
+
+    /// <summary>
+    /// 获得/设置 设置当前项是否 Active 方法
+    /// </summary>
+    /// <param name="item"></param>
+    /// <returns></returns>
+    protected string? DisableItem(SelectedItem item) => CssBuilder.Default("dropdown-item")
+        .AddClass("disabled", item.IsDisabled)
         .Build();
 
     /// <summary>
@@ -80,6 +89,12 @@ public partial class Dropdown<TValue>
     /// </summary>
     [Parameter]
     public RenderFragment<SelectedItem>? ItemTemplate { get; set; }
+
+    /// <summary>
+    /// 获得/设置 按钮内容模板
+    /// </summary>
+    [Parameter]
+    public RenderFragment<SelectedItem?>? ButtonTemplate { get; set; }
 
     /// <summary>
     /// 获得/设置 是否开启分裂式 默认 false
@@ -118,16 +133,16 @@ public partial class Dropdown<TValue>
     public bool ShowFixedButtonTextInDropdown { get; set; }
 
     /// <summary>
-    /// 获得/设置 下拉框渲染类型 默认 DropdownMenu 下拉菜单
-    /// </summary>
-    [Parameter]
-    public DropdownType DropdownType { get; set; }
-
-    /// <summary>
     /// 获得/设置 固定按钮显示文字 默认 null
     /// </summary>
     [Parameter]
     public string? FixedButtonText { get; set; }
+
+    /// <summary>
+    ///  获得/设置 Items 模板 默认 null
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ItemsTemplate { get; set; }
 
     /// <summary>
     /// SelectedItemChanged 回调方法
@@ -151,7 +166,7 @@ public partial class Dropdown<TValue>
         base.OnParametersSet();
 
         // 合并 Items 与 Options 集合
-        Items ??= Enumerable.Empty<SelectedItem>();
+        Items ??= [];
 
         if (!Items.Any() && typeof(TValue).IsEnum())
         {
@@ -160,8 +175,8 @@ public partial class Dropdown<TValue>
 
         DataSource = Items.ToList();
 
-        SelectedItem = DataSource.FirstOrDefault(i => i.Value.Equals(CurrentValueAsString, StringComparison.OrdinalIgnoreCase))
-            ?? DataSource.FirstOrDefault(i => i.Active)
+        SelectedItem = DataSource.Find(i => i.Value.Equals(CurrentValueAsString, StringComparison.OrdinalIgnoreCase))
+            ?? DataSource.Find(i => i.Active)
             ?? DataSource.FirstOrDefault();
 
         FixedButtonText ??= SelectedItem?.Text;

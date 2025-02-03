@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using System.Linq.Expressions;
 using System.Reflection;
@@ -8,7 +9,7 @@ using System.Reflection;
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// 
+/// TableFooterCell 组件
 /// </summary>
 public partial class TableFooterCell
 {
@@ -32,6 +33,18 @@ public partial class TableFooterCell
     public Alignment Align { get; set; }
 
     /// <summary>
+    /// 获得/设置 格式化字符串 如时间类型设置 yyyy-MM-dd
+    /// </summary>
+    [Parameter]
+    public string? FormatString { get; set; }
+
+    /// <summary>
+    /// 获得/设置 列格式化回调委托
+    /// </summary>
+    [Parameter]
+    public Func<object?, Task<string?>>? Formatter { get; set; }
+
+    /// <summary>
     /// 获得/设置 聚合方法枚举 默认 Sum
     /// </summary>
     [Parameter]
@@ -50,10 +63,19 @@ public partial class TableFooterCell
     public string? Field { get; set; }
 
     /// <summary>
+    /// 获得/设置 colspan 值 默认 null 自己手动设置值
+    /// </summary>
+    [Parameter]
+    public Func<BreakPoint, int>? ColspanCallback { get; set; }
+
+    /// <summary>
     /// 获得/设置 是否为移动端模式
     /// </summary>
     [CascadingParameter(Name = "IsMobileMode")]
     private bool IsMobileMode { get; set; }
+
+    [CascadingParameter(Name = "TableBreakPoint")]
+    private BreakPoint BreakPoint { get; set; }
 
     /// <summary>
     /// 获得/设置 是否为移动端模式
@@ -61,7 +83,28 @@ public partial class TableFooterCell
     [CascadingParameter(Name = "TableFooterContext")]
     private object? DataSource { get; set; }
 
-    private string? GetText() => Text ?? (GetCount(DataSource) == 0 ? "0" : (GetCountValue() ?? GetAggegateValue()));
+    /// <summary>
+    /// 获得/设置 显示节点阈值 默认值 BreakPoint.None 未设置
+    /// </summary>
+    [Parameter]
+    public BreakPoint ShownWithBreakPoint { get; set; }
+
+    private string? _value { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    /// <returns></returns>
+    protected override async Task OnParametersSetAsync()
+    {
+        _value = Text ?? (GetCount(DataSource) == 0 ? "0" : (GetCountValue() ?? await GetAggregateValue()));
+    }
+
+    /// <summary>
+    /// 检查当前列是否显示方法
+    /// </summary>
+    /// <returns></returns>
+    protected bool CheckShownWithBreakpoint => BreakPoint >= ShownWithBreakPoint;
 
     /// <summary>
     /// 解析 Count Aggregate
@@ -91,9 +134,23 @@ public partial class TableFooterCell
         return v;
     }
 
-    private string? GetAggegateValue()
+    private int? GetColspanValue()
     {
-        return Aggregate == AggregateType.Customer ? AggregateCustomerValue() : AggregateNumberValue();
+        int? ret = null;
+        if (ColspanCallback != null)
+        {
+            ret = ColspanCallback(BreakPoint);
+        }
+        else if (AdditionalAttributes != null && AdditionalAttributes.TryGetValue("colspan", out var colspan) && int.TryParse(colspan.ToString(), out var d))
+        {
+            ret = d;
+        }
+        return ret;
+    }
+
+    private async Task<string?> GetAggregateValue()
+    {
+        return Aggregate == AggregateType.Customer ? AggregateCustomerValue() : await AggregateNumberValue();
 
         string? AggregateCustomerValue()
         {
@@ -105,7 +162,7 @@ public partial class TableFooterCell
             return v;
         }
 
-        string? AggregateNumberValue()
+        async Task<string?> AggregateNumberValue()
         {
             string? v = null;
             if (!string.IsNullOrEmpty(Field) && DataSource != null)
@@ -123,9 +180,9 @@ public partial class TableFooterCell
                     // Count 属性类型
                     var propertyType = propertyInfo.PropertyType;
 
-                    // 构建 Aggegate
+                    // 构建 Aggregate
                     // @context.Sum(i => i.Count)
-                    var aggegateMethod = Aggregate switch
+                    var aggregateMethod = Aggregate switch
                     {
                         AggregateType.Average => propertyType.Name switch
                         {
@@ -139,19 +196,19 @@ public partial class TableFooterCell
                         _ => GetType().GetMethod(nameof(CreateAggregateLambda), BindingFlags.NonPublic | BindingFlags.Static)!
                             .MakeGenericMethod(propertyType)
                     };
-                    if (aggegateMethod != null)
+                    if (aggregateMethod != null)
                     {
-                        v = AggregateMethodInvoker(aggegateMethod, type, modelType, propertyType);
+                        v = await AggregateMethodInvoker(aggregateMethod, type, modelType, propertyType);
                     }
                 }
             }
             return v;
         }
 
-        string? AggregateMethodInvoker(MethodInfo aggegateMethod, Type type, Type modelType, Type propertyType)
+        async Task<string?> AggregateMethodInvoker(MethodInfo aggregateMethod, Type type, Type modelType, Type propertyType)
         {
             string? v = null;
-            var invoker = aggegateMethod.Invoke(null, new object[] { Aggregate, type, modelType, propertyType });
+            var invoker = aggregateMethod.Invoke(null, new object[] { Aggregate, type, modelType, propertyType });
             if (invoker != null)
             {
                 // 构建 Selector
@@ -166,15 +223,32 @@ public partial class TableFooterCell
                         if (invoker is Delegate d)
                         {
                             var val = d.DynamicInvoke(DataSource, selector);
-                            if (val != null)
-                            {
-                                v = val.ToString();
-                            }
+                            v = await GetValue(val);
                         }
                     }
                 }
             }
             return v;
+        }
+
+        async Task<string?> GetValue(object? val)
+        {
+            string? ret = null;
+            if (Formatter != null)
+            {
+                // 格式化回调委托
+                ret = await Formatter(val);
+            }
+            else if (!string.IsNullOrEmpty(FormatString))
+            {
+                // 格式化字符串
+                ret = Utility.Format(val, FormatString);
+            }
+            else
+            {
+                ret = val?.ToString();
+            }
+            return ret;
         }
     }
 
@@ -205,7 +279,7 @@ public partial class TableFooterCell
             var p2 = Expression.Parameter(typeof(object));
             var body = Expression.Call(mi,
                 Expression.Convert(p1, type),
-                Expression.Convert(p2, typeof(Func<,>).MakeGenericType(new Type[] { modelType, propertyType })));
+                Expression.Convert(p2, typeof(Func<,>).MakeGenericType([modelType, propertyType])));
             ret = Expression.Lambda<Func<object, object, TValue?>>(body, p1, p2).Compile();
         }
         return ret;

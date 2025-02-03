@@ -1,11 +1,12 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// 
+/// 卡片式上传组件
 /// </summary>
 public partial class CardUpload<TValue>
 {
@@ -13,23 +14,33 @@ public partial class CardUpload<TValue>
         .AddClass("is-single", IsSingle)
         .Build();
 
-    private string? GetDiabledString(UploadFile item) => (!IsDisabled && item.Uploaded && item.Code == 0) ? null : "disabled";
+    private string? GetDisabledString(UploadFile item) => (!IsDisabled && item.Uploaded && item.Code == 0) ? null : "disabled";
 
-    private bool ShowPreviewList => GetUploadFiles().Any();
+    private bool ShowPreviewList => GetUploadFiles().Count != 0;
 
     private List<string?> PreviewList => GetUploadFiles().Select(i => i.PrevUrl).ToList();
 
-    private string? GetDeleteButtonDiabledString(UploadFile item) => (!IsDisabled && item.Uploaded) ? null : "disabled";
+    private string? GetDeleteButtonDisabledString(UploadFile item) => (!IsDisabled && item.Uploaded) ? null : "disabled";
 
     private string? CardItemClass => CssBuilder.Default("upload-item")
         .AddClass("disabled", IsDisabled)
         .Build();
 
-    private string? StatusIconString => CssBuilder.Default("valid-icon")
+    private string? StatusIconString => CssBuilder.Default("valid-icon valid")
         .AddClass(StatusIcon)
         .Build();
 
+    private string? DeleteIconString => CssBuilder.Default("valid-icon invalid")
+        .AddClass(DeleteIcon)
+        .Build();
+
     private string PreviewerId => $"prev_{Id}";
+
+    /// <summary>
+    /// 获得/设置 是否允许预览回调方法 默认 null
+    /// </summary>
+    [Parameter]
+    public Func<UploadFile, bool>? CanPreviewCallback { get; set; }
 
     /// <summary>
     /// 获得/设置 图标模板
@@ -79,6 +90,18 @@ public partial class CardUpload<TValue>
     [Parameter]
     public bool ShowZoomButton { get; set; } = true;
 
+    /// <summary>
+    /// 获得/设置 是否显示删除按钮 默认 true 显示
+    /// </summary>
+    [Parameter]
+    public bool ShowDeletedButton { get; set; } = true;
+
+    /// <summary>
+    /// 获得/设置 继续上传按钮是否在列表前 默认 false
+    /// </summary>
+    [Parameter]
+    public bool IsUploadButtonAtFirst { get; set; }
+
     [Inject]
     [NotNull]
     private IIconTheme? IconTheme { get; set; }
@@ -98,12 +121,16 @@ public partial class CardUpload<TValue>
         ZoomIcon ??= IconTheme.GetIconByKey(ComponentIcons.CardUploadZoomIcon);
     }
 
-    private static bool IsImage(UploadFile item)
+    private bool IsImage(UploadFile item)
     {
         bool ret;
         if (item.File != null)
         {
             ret = item.File.ContentType.Contains("image", StringComparison.OrdinalIgnoreCase) || CheckExtensions(item.File.Name);
+        }
+        else if (CanPreviewCallback != null)
+        {
+            ret = CanPreviewCallback(item);
         }
         else
         {
@@ -114,7 +141,7 @@ public partial class CardUpload<TValue>
 
         bool CheckExtensions(string fileName) => Path.GetExtension(fileName).ToLowerInvariant() switch
         {
-            ".jpg" or ".jpeg" or ".png" or ".bmp" or ".gif" => true,
+            ".jpg" or ".jpeg" or ".png" or ".bmp" or ".gif" or ".webp" => true,
             _ => false
         };
         return ret;

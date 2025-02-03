@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -15,6 +16,7 @@ public class ResultDialogOption : DialogOption
     public ResultDialogOption()
     {
         ShowCloseButton = false;
+        ResultTask = new();
     }
 
     /// <summary>
@@ -60,25 +62,47 @@ public class ResultDialogOption : DialogOption
     /// <summary>
     /// 获得/设置 关闭按钮文本
     /// </summary>
+    [Obsolete("已弃用，删除即可; Deprecated. Just delete it.")]
+    [ExcludeFromCodeCoverage]
     public string? ButtonCloseText { get; set; }
 
     /// <summary>
     /// 获得/设置 关闭按钮图标
     /// </summary>
+    [Obsolete("已弃用，删除即可; Deprecated. Just delete it.")]
+    [ExcludeFromCodeCoverage]
     public string? ButtonCloseIcon { get; set; }
 
     /// <summary>
     /// 获得/设置 关闭按钮颜色
     /// </summary>
+    [Obsolete("已弃用，删除即可; Deprecated. Just delete it.")]
+    [ExcludeFromCodeCoverage]
     public Color ButtonCloseColor { get; set; } = Color.Secondary;
 
     /// <summary>
     /// 获得/设置 组件参数集合
     /// </summary>
-    public Dictionary<string, object>? ComponentParamters { get; set; }
+    [Obsolete("已过期，单词拼写错误。请使用 ComponentParameters 代替 Please use ComponentParameters")]
+    [ExcludeFromCodeCoverage]
+    public Dictionary<string, object>? ComponentParamters
+    {
+        get => ComponentParameters;
+        set => ComponentParameters = value;
+    }
+
+    /// <summary>
+    /// 获得/设置 组件参数集合
+    /// </summary>
+    public Dictionary<string, object>? ComponentParameters { get; set; }
 
     /// <summary>
     /// 获得/设置 模态弹窗返回值任务实例
     /// </summary>
-    internal TaskCompletionSource<DialogResult> ReturnTask { get; } = new TaskCompletionSource<DialogResult>();
+    internal TaskCompletionSource<DialogResult> ResultTask { get; set; }
+
+    /// <summary>
+    /// 获得 模态框接口方法
+    /// </summary>
+    internal Func<IResultDialog?>? GetDialog { get; set; }
 }

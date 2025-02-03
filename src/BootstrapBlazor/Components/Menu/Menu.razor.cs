@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -15,7 +16,6 @@ public partial class Menu
     protected string? ClassString => CssBuilder.Default("menu")
         .AddClass("is-bottom", IsBottom)
         .AddClass("is-vertical", IsVertical)
-        .AddClass("is-collapsed", IsVertical && IsCollapsed)
         .AddClassFromAttributes(AdditionalAttributes)
         .Build();
 
@@ -65,6 +65,13 @@ public partial class Menu
     /// <value></value>
     [Parameter]
     public bool IsVertical { get; set; }
+
+    /// <summary>
+    /// 获得/设置 自动滚动到可视区域 默认 true <see cref="IsVertical"/> 开启时生效
+    /// </summary>
+    /// <value></value>
+    [Parameter]
+    public bool IsScrollIntoView { get; set; } = true;
 
     /// <summary>
     /// 获得/设置 侧边栏垂直模式在底部 默认 false
@@ -122,14 +129,28 @@ public partial class Menu
     {
         base.OnParametersSet();
 
-        Items ??= Enumerable.Empty<MenuItem>();
-        InitMenus(null, Items, Navigator.ToBaseRelativePath(Navigator.Uri));
+        Items ??= [];
+        InitMenus(null, Items, GetUrl());
         if (!DisableNavigation)
         {
             Options.Text = ActiveMenu?.Text;
             Options.Icon = ActiveMenu?.Icon;
             Options.IsActive = true;
         }
+    }
+
+    private string GetUrl()
+    {
+        var url = Navigator.ToBaseRelativePath(Navigator.Uri);
+        if (url.Contains('?'))
+        {
+            url = url[..url.IndexOf("?")];
+        }
+        if (url.Contains('#'))
+        {
+            url = url[..url.IndexOf("#")];
+        }
+        return url;
     }
 
     /// <summary>
@@ -153,7 +174,7 @@ public partial class Menu
     /// <returns></returns>
     private async Task InvokeUpdateAsync()
     {
-        if (ShouldInvoke() && Module != null)
+        if (ShouldInvoke())
         {
             _isAccordion = IsAccordion;
             _isExpandAll = IsExpandAll;
@@ -191,6 +212,9 @@ public partial class Menu
             {
                 // 未禁用导航时 使用地址栏激活菜单
                 item.IsActive = true;
+
+                // 设置父菜单展开
+                item.SetCollapse(false);
             }
 
             if (item.IsActive)

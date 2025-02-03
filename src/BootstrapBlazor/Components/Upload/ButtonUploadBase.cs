@@ -1,13 +1,14 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.AspNetCore.Components.Forms;
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// 
+/// 按钮上传组件基类
 /// </summary>
 public abstract class ButtonUploadBase<TValue> : SingleUploadBase<TValue>
 {
@@ -20,6 +21,7 @@ public abstract class ButtonUploadBase<TValue> : SingleUploadBase<TValue>
     /// <summary>
     /// 获得/设置 是否允许多文件上传 默认 false 不允许
     /// </summary>
+    /// <remarks>多选文件时，所有文件处理完毕后，会额外触发一次 <see cref="OnAllFileUploaded"/> 回调</remarks>
     [Parameter]
     public bool IsMultiple { get; set; }
 
@@ -107,6 +109,24 @@ public abstract class ButtonUploadBase<TValue> : SingleUploadBase<TValue>
     [Parameter]
     public string? FileIconFile { get; set; }
 
+    /// <summary>
+    /// 获得/设置 取消图标
+    /// </summary>
+    [Parameter]
+    public string? CancelIcon { get; set; }
+
+    /// <summary>
+    /// 获得/设置 点击取消按钮回调此方法 默认 null
+    /// </summary>
+    [Parameter]
+    public Func<UploadFile, Task>? OnCancel { get; set; }
+
+    /// <summary>
+    /// 获得/设置 所有文件上传完毕回调方法 默认 null
+    /// </summary>
+    [Parameter]
+    public Func<IReadOnlyCollection<UploadFile>, Task>? OnAllFileUploaded { get; set; }
+
     [Inject]
     [NotNull]
     private IIconTheme? IconTheme { get; set; }
@@ -143,6 +163,7 @@ public abstract class ButtonUploadBase<TValue> : SingleUploadBase<TValue>
         FileIconArchive ??= IconTheme.GetIconByKey(ComponentIcons.FileIconArchive);
         FileIconImage ??= IconTheme.GetIconByKey(ComponentIcons.FileIconImage);
         FileIconFile ??= IconTheme.GetIconByKey(ComponentIcons.FileIconFile);
+        CancelIcon ??= IconTheme.GetIconByKey(ComponentIcons.UploadCancelIcon);
     }
 
     /// <summary>
@@ -172,6 +193,10 @@ public abstract class ButtonUploadBase<TValue> : SingleUploadBase<TValue>
                     StateHasChanged();
                 }
             }
+            if (OnAllFileUploaded != null)
+            {
+                await OnAllFileUploaded(UploadFiles);
+            }
         }
         else
         {
@@ -190,14 +215,9 @@ public abstract class ButtonUploadBase<TValue> : SingleUploadBase<TValue>
             }
             file.Uploaded = true;
         }
-    }
 
-    private void Update(UploadFile file)
-    {
-        if (GetShowProgress(file))
-        {
-            StateHasChanged();
-        }
+        //触发 ValueChange，以支持 bind-value
+        await base.OnFileChange(args);
     }
 
     /// <summary>
@@ -213,7 +233,13 @@ public abstract class ButtonUploadBase<TValue> : SingleUploadBase<TValue>
         {
             fileExtension = fileExtension.ToLowerInvariant();
         }
-        var icon = OnGetFileFormat?.Invoke(fileExtension) ?? fileExtension switch
+        var icon = OnGetFileFormat?.Invoke(fileExtension) ?? GetFileExtensions();
+        builder.AddClass(icon);
+        return builder.Build();
+
+        // switch 关键字导致无法 100% 覆盖
+        [ExcludeFromCodeCoverage]
+        string? GetFileExtensions() => fileExtension switch
         {
             ".csv" or ".xls" or ".xlsx" => FileIconExcel,
             ".doc" or ".docx" or ".dot" or ".dotx" => FileIconDocx,
@@ -227,8 +253,6 @@ public abstract class ButtonUploadBase<TValue> : SingleUploadBase<TValue>
             ".jpg" or ".jpeg" or ".png" or ".bmp" or ".gif" => FileIconImage,
             _ => FileIconFile
         };
-        builder.AddClass(icon);
-        return builder.Build();
     }
 
     /// <summary>
@@ -262,6 +286,19 @@ public abstract class ButtonUploadBase<TValue> : SingleUploadBase<TValue>
         if (OnDownload != null)
         {
             await OnDownload(item);
+        }
+    }
+
+    /// <summary>
+    /// 点击取消按钮回调此方法
+    /// </summary>
+    /// <param name="item"></param>
+    /// <returns></returns>
+    protected async Task OnClickCancel(UploadFile item)
+    {
+        if (OnCancel != null)
+        {
+            await OnCancel(item);
         }
     }
 }

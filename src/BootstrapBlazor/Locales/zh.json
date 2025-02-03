@@ -9,14 +9,6 @@
     "FailedText": "加载失败",
     "LoadText": "正在加载 ..."
   },
-  "BootstrapBlazor.Components.Camera": {
-    "DeviceLabel": "摄像头",
-    "InitDevicesString": "正在识别摄像头",
-    "PlayText": "开启",
-    "StopText": "关闭",
-    "PhotoText": "拍照",
-    "NotFoundDevicesString": "未找到视频相关设备"
-  },
   "BootstrapBlazor.Components.Calendar": {
     "PreviousYear": "上一年",
     "PreviousMonth": "上一月",
@@ -63,7 +55,7 @@
     "Months": "1,2,3,4,5,6,7,8,9,10,11,12",
     "MonthLists": "一月,二月,三月,四月,五月,六月,七月,八月,九月,十月,十一月,十二月",
     "WeekLists": "日,一,二,三,四,五,六",
-    "GenericTypeErroMessage": "DateTimePicker 组件仅支持绑定泛型为 DateTime 或者 DateTime?",
+    "GenericTypeErroMessage": "DateTimePicker 组件仅支持绑定泛型为 DateTime DateTime? DateTimeOffset DateTimeOffset?",
     "Today": "今天",
     "Yesterday": "昨天",
     "Week": "一周前"
@@ -75,6 +67,7 @@
     "ClearButtonText": "清空",
     "TodayButtonText": "今天",
     "ConfirmButtonText": "确定",
+    "DateTimeFormat": "yyyy-MM-dd HH\\:mm\\:ss",
     "DateFormat": "yyyy-MM-dd",
     "Last7Days": "最近 7 天",
     "Last30Days": "最近 30 天",
@@ -127,7 +120,8 @@
   "BootstrapBlazor.Components.ModalDialog": {
     "CloseButtonText": "关闭",
     "SaveButtonText": "保存",
-    "PrintButtonText": "打印"
+    "PrintButtonText": "打印",
+    "ExportPdfButtonText": "导出 Pdf"
   },
   "BootstrapBlazor.Components.MultiSelect": {
     "PlaceHolder": "点击进行多选 ...",
@@ -135,7 +129,8 @@
     "ReverseSelectText": "反选",
     "ClearText": "清除",
     "MinErrorMessage": "最少请选择 {0} 项",
-    "MaxErrorMessage": "最多可以选择 {0} 项"
+    "MaxErrorMessage": "最多可以选择 {0} 项",
+    "NoSearchDataText": "无数据"
   },
   "BootstrapBlazor.Components.Pagination": {
     "GotoNavigatorLabelText": "导航到"
@@ -152,7 +147,8 @@
     "EmptyText": "无数据"
   },
   "BootstrapBlazor.Components.Search": {
-    "SearchButtonText": "搜索"
+    "SearchButtonText": "搜索",
+    "NoDataTip": "无数据"
   },
   "BootstrapBlazor.Components.Select": {
     "PlaceHolder": "请选择 ...",
@@ -179,6 +175,10 @@
     "CloseAllTabsText": "关闭所有标签",
     "NotFoundTabText": "未找到"
   },
+  "BootstrapBlazor.Components.MultiFilter": {
+    "MultiFilterSearchPlaceHolderText": "请输入 ...",
+    "MultiFilterSelectAllText": "全选"
+  },
   "BootstrapBlazor.Components.Table": {
     "AddButtonText": "新建",
     "EditButtonText": "编辑",
@@ -199,6 +199,8 @@
     "SearchButtonText": "搜索",
     "ResetSearchButtonText": "清空搜索",
     "AdvanceButtonText": "高级搜索",
+    "AdvancedSortModalTitle": "自定义排序",
+    "AdvancedSortButtonText": "高级排序",
     "CheckboxDisplayText": "选择",
     "EditModalTitle": "编辑窗口",
     "AddModalTitle": "新建窗口",
@@ -231,11 +233,21 @@
     "ExportToastTitle": "导出数据",
     "ExportToastContent": "导出数据 {0}，{1} 秒后自动关闭",
     "ExportToastInProgressContent": "正在导出数据，请稍后, {0} 秒后自动关闭",
+    "ExportCsvDropdownItemText": "微软 Csv 格式",
     "ExportExcelDropdownItemText": "微软 Excel 格式",
+    "ExportPdfDropdownItemText": "Pdf 格式",
     "PageInfoText": "{0} - {1} 共 {2} 条",
     "PageItemsText": "{0} 条/页",
     "CopyColumnTooltipText": "拷贝列内容到剪切板",
-    "CopyColumnCopiedTooltipText": "已拷贝"
+    "CopyColumnCopiedTooltipText": "已拷贝",
+    "ColumnWidthTooltipPrefix": "宽度：",
+    "ColumnToolboxTitle": "操作",
+    "AlignLeftText": "左对齐",
+    "AlignLeftTooltipText": "点击后本列文本左对齐",
+    "AlignCenterText": "居中",
+    "AlignCenterTooltipText": "点击后本列文本居中对齐",
+    "AlignRightText": "右对齐",
+    "AlignRightTooltipText": "点击后本列文本右对齐"
   },
   "BootstrapBlazor.Components.EditDialog": {
     "CloseButtonText": "关闭",
@@ -283,8 +295,8 @@
   "BootstrapBlazor.Components.Transfer": {
     "LeftPanelText": "全部",
     "RightPanelText": "已选",
-    "MinErrorMessage": "最少请选择{0}项",
-    "MaxErrorMessage": "最多可选择{0}项"
+    "MinErrorMessage": "最少请选择 {0} 项",
+    "MaxErrorMessage": "最多可选择 {0} 项"
   },
   "BootstrapBlazor.Components.TransferPanel": {
     "SearchPlaceHolderString": "请输入 ...",
@@ -293,11 +305,16 @@
   "BootstrapBlazor.Components.Tree": {
     "NotSetOnTreeExpandErrorMessage": "未设置 OnExpandNodeAsync 回调委托方法"
   },
+  "BootstrapBlazor.Components.TreeView": {
+    "NotSetOnTreeExpandErrorMessage": "未设置 OnExpandNodeAsync 回调委托方法"
+  },
   "BootstrapBlazor.Components.UploadBase": {
     "DeleteButtonText": "删除",
     "BrowserButtonText": "浏览",
     "FileExtensions": "文件扩展名必须为以下几种格式: {0}",
-    "FileSizeValidation": "文件太大，文件限制大小为 {0}"
+    "FileSizeValidation": "文件太大，文件限制大小为 {0}",
+    "DropUploadText": "拖拽文件到此处上传",
+    "DropFooterText": ""
   },
   "BootstrapBlazor.Components.Handwritten": {
     "SaveButtonText": "保存",
@@ -330,5 +347,38 @@
     "ButtonText": "点击复制",
     "DialogHeaderText": "请选择图标",
     "CopiedTooltipText": "拷贝成功"
+  },
+  "BootstrapBlazor.Components.Splitting": {
+    "Text": "正在加载 ..."
+  },
+  "BootstrapBlazor.Components.QueryBuilder": {
+    "And": "并且",
+    "Or": "或者",
+    "GreaterThanOrEqual": "大于等于",
+    "LessThanOrEqual": "小于等于",
+    "GreaterThan": "大于",
+    "LessThan": "小于",
+    "Equal": "等于",
+    "NotEqual": "不等于",
+    "Contains": "包含",
+    "NotContains": "不包含",
+    "GroupText": "组合条件",
+    "ItemText": "单行条件"
+  },
+  "BootstrapBlazor.Components.TableAdvancedSortDialog": {
+    "AscText": "升序",
+    "DescText": "降序"
+  },
+  "BootstrapBlazor.Components.ClockPicker": {
+    "AMText": "上午",
+    "PMText": "下午"
+  },
+  "BootstrapBlazor.Components.ThemeProvider": {
+    "AutoModeText": "自动",
+    "DarkModeText": "暗黑",
+    "LightModeText": "明亮"
+  },
+  "BootstrapBlazor.Components.ValidateBase": {
+    "DefaultRequiredErrorMessage": "{0}是必填项"
   }
 }

@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
@@ -8,7 +9,7 @@ namespace BootstrapBlazor.Components;
 /// 单元格内按钮组件
 /// </summary>
 [JSModuleNotInherited]
-public class TableCellButton : ButtonBase
+public class TableCellButton : ButtonBase, ITableCellButton
 {
     /// <summary>
     /// 获得/设置 Table 扩展按钮集合实例
@@ -17,13 +18,13 @@ public class TableCellButton : ButtonBase
     protected TableExtensionButton? Buttons { get; set; }
 
     /// <summary>
-    /// 获得/设置 点击按钮是否选中正行 默认 true 选中
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
     public bool AutoSelectedRowWhenClick { get; set; } = true;
 
     /// <summary>
-    /// 获得/设置 点击按钮是否选中正行 默认 true 选中
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
     public bool AutoRenderTableWhenClick { get; set; }

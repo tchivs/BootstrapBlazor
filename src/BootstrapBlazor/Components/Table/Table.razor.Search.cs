@@ -1,8 +1,10 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.AspNetCore.Components.Web;
+using System.Reflection;
 
 namespace BootstrapBlazor.Components;
 
@@ -29,8 +31,8 @@ public partial class Table<TItem>
     /// <summary>
     /// 获得/设置 SearchModel 实例
     /// </summary>
-    [Parameter]
-    public TItem SearchModel { get; set; } = new TItem();
+    [Parameter, NotNull]
+    public TItem? SearchModel { get; set; }
 
     /// <summary>
     /// 获得/设置 自定义搜索模型 <see cref="CustomerSearchTemplate"/>
@@ -57,7 +59,7 @@ public partial class Table<TItem>
     public bool CollapsedTopSearch { get; set; }
 
     /// <summary>
-    /// 获得/设置 是否显示搜索框 默认为 true 显示搜索文本框  <see cref="ShowSearch" />
+    /// 获得/设置 是否显示搜索文本框 默认为 true 显示搜索文本框  <see cref="ShowSearch" />
     /// </summary>
     [Parameter]
     public bool ShowSearchText { get; set; } = true;
@@ -138,7 +140,7 @@ public partial class Table<TItem>
         }
         else if (SearchTemplate == null)
         {
-            Utility.Reset(SearchModel);
+            Utility.Reset(SearchModel, CreateSearchModel());
         }
 
         PageIndex = 1;
@@ -200,7 +202,7 @@ public partial class Table<TItem>
             ItemsPerRow = SearchDialogItemsPerRow,
             LabelAlign = SearchDialogLabelAlign,
             Size = SearchDialogSize,
-            Items = Columns.Where(i => i.Searchable),
+            Items = Columns.Where(i => i.GetSearchable()),
             IsDraggable = SearchDialogIsDraggable,
             ShowMaximizeButton = SearchDialogShowMaximizeButton,
             ShowUnsetGroupItemsOnTop = ShowUnsetGroupItemsOnTop
@@ -217,7 +219,9 @@ public partial class Table<TItem>
             RowType = SearchDialogRowType,
             ItemsPerRow = SearchDialogItemsPerRow,
             Size = SearchDialogSize,
-            LabelAlign = SearchDialogLabelAlign
+            LabelAlign = SearchDialogLabelAlign,
+            IsDraggable = SearchDialogIsDraggable,
+            ShowMaximizeButton = SearchDialogShowMaximizeButton
         };
     }
 
@@ -225,46 +229,57 @@ public partial class Table<TItem>
     /// 获得 <see cref="CustomerSearchModel"/> 中过滤条件 <see cref="SearchTemplate"/> 模板中的条件无法获得
     /// </summary>
     /// <returns></returns>
-    protected IEnumerable<IFilterAction> GetCustomerSearchs()
+    protected IEnumerable<IFilterAction> GetCustomerSearches()
     {
-        var searchs = new List<IFilterAction>();
+        var searches = new List<IFilterAction>();
         // 处理自定义 SearchModel 条件
         if (CustomerSearchModel != null)
         {
-            searchs.AddRange(CustomerSearchModel.GetSearchs());
+            searches.AddRange(CustomerSearchModel.GetSearches());
         }
-        return searchs;
+        return searches;
     }
 
     /// <summary>
     /// 获得 <see cref="SearchModel"/> 中过滤条件
     /// </summary>
     /// <returns></returns>
-    protected List<IFilterAction> GetAdvanceSearchs()
+    protected List<IFilterAction> GetAdvanceSearches()
     {
-        var searchs = new List<IFilterAction>();
-        if (ShowAdvancedSearch && CustomerSearchModel == null && SearchModel != null)
+        var searches = new List<IFilterAction>();
+        if (ShowAdvancedSearch && CustomerSearchModel == null)
         {
-            var searchColumns = Columns.Where(i => i.Searchable);
-            foreach (var property in SearchModel.GetType().GetProperties().Where(i => searchColumns.Any(col => col.GetFieldName() == i.Name)))
+            var callback = GetAdvancedSearchFilterCallback ?? new Func<PropertyInfo, TItem, List<SearchFilterAction>?>((p, model) =>
             {
-                var v = property.GetValue(SearchModel);
+                var ret = new List<SearchFilterAction>();
+                var v = p.GetValue(model);
                 if (v != null && v.ToString() != string.Empty)
                 {
-                    searchs.Add(new SearchFilterAction(property.Name, v, FilterAction.Equal));
+                    ret.Add(new SearchFilterAction(p.Name, v, FilterAction.Equal));
+                }
+                return ret;
+            });
+
+            var searchColumns = Columns.Where(i => i.GetSearchable());
+            foreach (var property in SearchModel.GetType().GetProperties().Where(i => searchColumns.Any(col => col.GetFieldName() == i.Name)))
+            {
+                var filters = callback(property, SearchModel);
+                if (filters != null && filters.Count != 0)
+                {
+                    searches.AddRange(filters);
                 }
             }
         }
-        return searchs;
+        return searches;
     }
 
     /// <summary>
     /// 通过列集合中的 <see cref="ITableColumn.Searchable"/> 列与 <see cref="SearchText"/> 拼装 IFilterAction 集合
     /// </summary>
     /// <returns></returns>
-    protected List<IFilterAction> GetSearchs() => Columns.Where(col => col.Searchable).ToSearchs(SearchText);
+    protected List<IFilterAction> GetSearches() => Columns.Where(col => col.GetSearchable()).ToSearches(SearchText);
 
-    private async Task OnSearchKeyup(KeyboardEventArgs args)
+    private async Task OnSearchKeyUp(KeyboardEventArgs args)
     {
         if (args.Key == "Enter")
         {
@@ -289,5 +304,5 @@ public partial class Table<TItem>
     /// 
     /// </summary>
     /// <returns></returns>
-    private IEnumerable<ITableColumn> GetSearchColumns() => Columns.Where(c => c.Searchable);
+    private IEnumerable<ITableColumn> GetSearchColumns() => Columns.Where(c => c.GetSearchable());
 }

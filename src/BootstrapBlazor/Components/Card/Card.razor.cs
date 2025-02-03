@@ -1,11 +1,12 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
-/// Card组件基类
+/// Card 组件
 /// </summary>
 public partial class Card
 {
@@ -16,7 +17,7 @@ public partial class Card
         .AddClass("text-center", IsCenter)
         .AddClass($"border-{Color.ToDescriptionString()}", Color != Color.None)
         .AddClass("card-shadow", IsShadow)
-        .AddClass("is-collapsable", IsCollapsible)
+        .AddClass("is-collapsible", IsCollapsible)
         .AddClassFromAttributes(AdditionalAttributes)
         .Build();
 
@@ -103,6 +104,12 @@ public partial class Card
     public bool Collapsed { get; set; }
 
     /// <summary>
+    /// 获得/设置 是否收缩 默认 false 展开
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> CollapsedChanged { get; set; }
+
+    /// <summary>
     /// 获得/设置 是否显示阴影 默认 false
     /// </summary>
     [Parameter]
@@ -120,5 +127,27 @@ public partial class Card
         base.OnParametersSet();
 
         CollapseIcon ??= IconTheme.GetIconByKey(ComponentIcons.CardCollapseIcon);
+    }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    /// <returns></returns>
+    protected override Task InvokeInitAsync() => InvokeVoidAsync("init", Id, Interop, nameof(ToggleCollapse));
+
+    private string? BodyId => $"{Id}_body";
+
+    /// <summary>
+    /// The callback click collapse button
+    /// </summary>
+    /// <returns></returns>
+    [JSInvokable]
+    public async Task ToggleCollapse(bool collapsed)
+    {
+        Collapsed = collapsed;
+        if (CollapsedChanged.HasDelegate)
+        {
+            await CollapsedChanged.InvokeAsync(Collapsed);
+        }
     }
 }

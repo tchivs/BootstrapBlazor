@@ -1,11 +1,16 @@
-﻿@namespace BootstrapBlazor.Components
+﻿@using Microsoft.AspNetCore.Components.Web.Virtualization
+@namespace BootstrapBlazor.Components
 @typeparam TItem
 @inherits BootstrapModuleComponentBase
-@attribute [BootstrapModuleAutoLoader]
+@attribute [BootstrapModuleAutoLoader(JSObjectReference = true)]
 
 @if (Items == null)
 {
-    if (ShowSkeleton)
+    if (_init)
+    {
+        
+    }
+    else if (ShowSkeleton)
     {
         <SkeletonTree AdditionalAttributes="AdditionalAttributes"></SkeletonTree>
     }
@@ -18,34 +23,60 @@
 }
 else
 {
-    <div @attributes="AdditionalAttributes" id="@Id" tabindex="0" class="@ClassString">
-        <ul class="tree-root">
-            @foreach (var item in Items)
+    <div @attributes="AdditionalAttributes" id="@Id" tabindex="0" class="@ClassString" data-bb-keyboard="@EnableKeyboardString">
+        @if (ShowSearch)
+        {
+            @if (SearchTemplate == null)
             {
-                @RenderTreeItem(item)
+                <BootstrapInputGroup class="tree-search">
+                    <BootstrapInput @bind-Value="@_searchText" OnEnterAsync="@OnEnterAsync" OnEscAsync="@OnEscAsync" />
+                    @if (ShowResetSearchButton)
+                    {
+                        <Button Icon="@ClearSearchIcon" OnClickWithoutRender="OnClickResetSearch" class="tree-search-reset"></Button>
+                    }
+                    <Button Icon="@SearchIcon" OnClickWithoutRender="OnClickSearch"></Button>
+                </BootstrapInputGroup>
             }
-        </ul>
+            else
+            {
+                @SearchTemplate
+            }
+        }
+        @if (IsVirtualize)
+        {
+            <div class="tree-root is-virtual" tabindex="0">
+                <Virtualize ItemSize="RowHeight" OverscanCount="10" Items="@Rows">
+                    <ItemContent>
+                        @RenderTreeRow(context)
+                    </ItemContent>
+                </Virtualize>
+            </div>
+        }
+        else
+        {
+            <div class="tree-root" tabindex="0">
+                @foreach (var item in Rows)
+                {
+                    @RenderTreeRow(item)
+                }
+            </div>
+        }
     </div>
 }
 
 @code {
-    private RenderFragment<TreeViewItem<TItem>> RenderTreeNode => item =>
-    @<ul class="@GetTreeClassString(item)">
-        @foreach (var node in item.Items)
-        {
-            @RenderTreeItem(node)
-        }
-    </ul>;
-
-    private RenderFragment<TreeViewItem<TItem>> RenderTreeItem => item =>
-    @<li class="@GetItemClassString(item)">
-        <div class="tree-content">
-            <DynamicElement TagName="i" class="@GetCaretClassString(item)" TriggerClick="TriggerNodeArrow(item)"  OnClick="() => OnToggleNodeAsync(item, true)"></DynamicElement>
+    private RenderFragment<TreeViewItem<TItem>> RenderTreeRow => item =>
+    @<div @key="item" class="@GetContentClassString(item)" data-bb-tree-view-index="@Rows.IndexOf(item)" @oncontextmenu="e => OnContextMenu(e, item)" @oncontextmenu:preventDefault="IsPreventDefault" @ontouchstart="e => OnTouchStart(e, item)" @ontouchend="OnTouchEnd" style="@GetTreeRowStyle(item)">
+        <div class="tree-content-header"></div>
+        <div class="tree-content-body">
+            <DynamicElement TagName="i" class="@GetCaretClassString(item)" TriggerClick="CanTriggerClickNode(item)" OnClick="() => OnToggleNodeAsync(item, true)"></DynamicElement>
+            <i class="@NodeLoadingClassString"></i>
             @if (ShowCheckbox)
             {
-                <Checkbox Value="@item.CheckedState" IsDisabled="@item.IsDisabled" SkipValidate="true"
-                          ShowLabel="false" ShowAfterLabel="false" State="@item.CheckedState"
-                          OnStateChanged="(state, v) => OnCheckStateChanged(item, true)" StopPropagation="true" />
+                <Checkbox Value="@item" IsDisabled="GetItemDisabledState(item)"
+                          SkipValidate="true" ShowLabel="false" ShowAfterLabel="false"
+                          State="@item.CheckedState" OnStateChanged="(state, v) => OnCheckStateChanged(item, state)"
+                          OnBeforeStateChanged="@(MaxSelectedCount > 0 ? state => OnBeforeStateChangedCallback(item, state) : null)" ></Checkbox>
             }
             <DynamicElement class="@GetNodeClassString(item)" TriggerClick="TriggerNodeLabel(item)" OnClick="() => OnClick(item)">
                 @if (ShowIcon)
@@ -54,23 +85,13 @@ else
                 }
                 @if (item.Template == null)
                 {
-                    <span class="@item.CssClass">@item.Text</span>
+                    <span class="@GetItemTextClassString(item)">@item.Text</span>
                 }
                 else
                 {
-                    @item.Template.Invoke(item.Value)    
+                    @item.Template(item.Value)
                 }
             </DynamicElement>
         </div>
-        @if (item.ShowLoading)
-        {
-            <ul class="tree-ul show">
-                <Spinner Size="Size.Small" Color="Color.Primary" />
-            </ul>
-        }
-        else if (item.Items.Any())
-        {
-            @RenderTreeNode(item)
-        }
-    </li>;
+    </div>;
 }

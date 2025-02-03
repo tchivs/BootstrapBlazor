@@ -12,31 +12,98 @@ const isFunction = object => {
     return typeof object === 'function'
 }
 
-const copy = (text = '') => {
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(text)
-    } else {
-        const input = document.createElement('input')
-        input.setAttribute('type', 'text')
-        input.setAttribute('value', text)
-        input.setAttribute('hidden', 'true')
-        document.body.appendChild(input)
-        input.select()
-        document.execCommand('copy')
-        document.body.removeChild(input)
+function selectionSet(elem) {
+    const sel = document.getSelection();
+    if (sel) {
+        const range = document.createRange();
+        range.selectNodeContents(elem);
+        sel.removeAllRanges();
+        sel.addRange(range);
     }
 }
 
-const getUID = (prefix = '') => {
-    do {
-        prefix += Math.floor(Math.random() * 1000000)
-    } while (document.getElementById(prefix))
+function selectionClear() {
+    const sel = document.getSelection();
+    if (sel) {
+        sel.removeAllRanges();
+    }
+}
 
-    return prefix
+function copyTextUsingDOM(str) {
+    const tempElem = document.createElement("div");
+    tempElem.setAttribute("style", "-webkit-user-select: text !important");
+    let spanParent = tempElem;
+    if (tempElem.attachShadow) {
+        spanParent = tempElem.attachShadow({ mode: "open" });
+    }
+    const span = document.createElement("span");
+    span.innerText = str;
+    spanParent.appendChild(span);
+    document.body.appendChild(tempElem);
+    selectionSet(span);
+    const result = document.execCommand("copy");
+    selectionClear();
+    document.body.removeChild(tempElem);
+    return result;
+}
+
+const copy = (text = '') => {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text)
+    }
+    else {
+        copyTextUsingDOM(text)
+    }
+}
+
+const getTextFromClipboard = () => {
+    return navigator.clipboard.readText();
+}
+
+async function getAllClipboardContents() {
+    try {
+        const clipboardItems = await navigator.clipboard.read();
+        let items = [];
+        for (const clipboardItem of clipboardItems) {
+            for (const mimeType of clipboardItem.types) {
+                const blob = await clipboardItem.getType(mimeType);
+                const arrayBuffer = await blob.arrayBuffer();
+                items.push({
+                    mimeType: mimeType,
+                    data: new Uint8Array(arrayBuffer)
+                });
+            }
+        }
+        return items;
+    } catch (error) {
+        console.error('Failed to read from clipboard:', error);
+    }
+    return [];
+}
+
+const getUID = (prefix = 'bb') => {
+    let id = "";
+    do {
+        const code = Math.floor(Math.random() * 1000000);
+        id = `${prefix}_${code}`;
+    }
+    while (document.getElementById(id))
+
+    return id;
+}
+
+const getInnerWidth = element => getWidth(element, true)
+
+const getOuterWidth = element => {
+    let width = element.getBoundingClientRect().width
+    const styles = getComputedStyle(element)
+    const marginLeft = parseFloat(styles.marginLeft)
+    const marginRight = parseFloat(styles.marginRight)
+    return width + marginLeft + marginRight
 }
 
 const getWidth = (element, self = false) => {
-    let width = element.offsetWidth
+    let width = element.getBoundingClientRect().width
     if (self) {
         const styles = getComputedStyle(element)
         const borderLeftWidth = parseFloat(styles.borderLeftWidth)
@@ -48,8 +115,18 @@ const getWidth = (element, self = false) => {
     return width
 }
 
+const getInnerHeight = element => getHeight(element, true)
+
+const getOuterHeight = element => {
+    let height = element.getBoundingClientRect().height
+    const styles = getComputedStyle(element)
+    const marginTop = parseFloat(styles.marginTop)
+    const marginBottom = parseFloat(styles.marginBottom)
+    return height + marginTop + marginBottom
+}
+
 const getHeight = (element, self = false) => {
-    let height = element.offsetHeight
+    let height = element.getBoundingClientRect().height
     if (self) {
         const styles = getComputedStyle(element)
         const borderTopWidth = parseFloat(styles.borderTopWidth)
@@ -60,10 +137,6 @@ const getHeight = (element, self = false) => {
     }
     return height
 }
-
-const getInnerWidth = element => getWidth(element, true)
-
-const getInnerHeight = element => getHeight(element, true)
 
 const getWindowScroll = node => {
     const win = getWindow(node)
@@ -88,23 +161,42 @@ const getWindow = node => {
     return node
 }
 
+const normalizeLink = link => {
+    let url = link
+    if (url.indexOf('./') === 0) {
+        url = url.substring(2)
+    }
+    while (url.indexOf('../') === 0) {
+
+        url = url.substring(3)
+    }
+    return url
+}
+
+/**
+ * 添加 script 标签到 head
+ * @param {string} content
+ * @returns
+ */
 const addScript = content => {
     // content 文件名
-    const links = [...document.getElementsByTagName('script')]
-    let link = links.filter(function (link) {
-        return link.src.indexOf(content) > -1
+    const scripts = [...document.getElementsByTagName('script')]
+    const url = normalizeLink(content)
+    let link = scripts.filter(function (link) {
+        return link.src.indexOf(url) > -1
     })
-    let done = link.length > 0;
     if (link.length === 0) {
-        link = document.createElement('script')
-        link.setAttribute('src', content)
-        document.body.appendChild(link)
-        link.onload = () => {
-            done = true
+        const script = document.createElement('script')
+        link.push(script)
+        script.setAttribute('src', content)
+        document.body.appendChild(script)
+        script.onload = () => {
+            script.setAttribute('loaded', true)
         }
     }
     return new Promise((resolve, reject) => {
         const handler = setInterval(() => {
+            const done = link[0].getAttribute('loaded') === 'true'
             if (done) {
                 clearInterval(handler)
                 resolve()
@@ -113,33 +205,87 @@ const addScript = content => {
     })
 }
 
+/**
+ * 从 head 移除 script 标签
+ * @param {string} content
+ */
 const removeScript = content => {
     const links = [...document.getElementsByTagName('script')]
+    const url = normalizeLink(content)
     const nodes = links.filter(function (link) {
-        return link.src.indexOf(content) > -1
+        return link.src.indexOf(url) > -1
     })
     for (let index = 0; index < nodes.length; index++) {
         document.body.removeChild(nodes[index])
     }
 }
 
-const addLink = href => {
+/**
+ * 批量添加 script 标签到 head
+ * @param {string[]} content
+ * @returns
+ */
+const addScriptBatch = content => {
+    const promises = content.map(item => addScript(item));
+    return Promise.all(promises);
+}
+
+/**
+ * 从 head 批量移除 script 标签
+ * @param {string[]} content
+ * @returns
+ */
+const removeScriptBatch = (content) => {
+    const promises = content.map(item => removeScript(item));
+    return Promise.all(promises);
+}
+
+/**
+ * 批量添加 link 标签到 head
+ * @param {string[]} href
+ * @param {string} rel
+ * @returns
+ */
+const addLinkBatch = (href, rel = "stylesheet") => {
+    const promises = href.map(item => addLink(item, rel));
+    return Promise.all(promises);
+}
+
+/**
+ * 从 head 批量移除 link 标签
+ * @param {string[]} href
+ * @returns
+ */
+const removeLinkBatch = (href) => {
+    const promises = href.map(item => removeLink(item));
+    return Promise.all(promises);
+}
+
+/**
+ * 添加 link 标签到 head
+ * @param {string} href
+ * @param {string} rel
+ * @returns
+ */
+const addLink = (href, rel = "stylesheet") => {
     const links = [...document.getElementsByTagName('link')]
+    const url = normalizeLink(href)
     let link = links.filter(function (link) {
-        return link.href.indexOf(href) > -1
+        return link.href.indexOf(url) > -1
     })
-    let done = link.length > 0;
     if (link.length === 0) {
-        link = document.createElement('link')
-        link.setAttribute('href', href)
-        link.setAttribute("rel", "stylesheet")
-        document.getElementsByTagName("head")[0].appendChild(link)
-        link.onload = () => {
-            done = true
+        const css = document.createElement('link')
+        link.push(css)
+        css.setAttribute("rel", rel)
+        css.setAttribute('href', href)
+        document.getElementsByTagName("head")[0].appendChild(css)
+        css.onload = () => {
+            css.setAttribute('loaded', true)
         }
     }
     return new Promise((resolve, reject) => {
         const handler = setInterval(() => {
+            const done = link[0].getAttribute('loaded') === 'true'
             if (done) {
                 clearInterval(handler)
                 resolve()
@@ -148,14 +294,55 @@ const addLink = href => {
     })
 }
 
+/**
+ * 从 head 移除 link 标签
+ * @param {string} href
+ */
 const removeLink = href => {
     const links = [...document.getElementsByTagName('link')]
+    const url = normalizeLink(href)
     const nodes = links.filter(function (link) {
-        return link.href.indexOf(href) > -1
+        return link.href.indexOf(url) > -1
     })
     for (let index = 0; index < nodes.length; index++) {
         document.getElementsByTagName("head")[0].removeChild(nodes[index])
     }
+}
+
+/**
+ * 自动识别 css 或者 js 链接并添加到 head
+ * @param {string[]} fileList
+ */
+const autoAdd = (fileList) => {
+    const promises = fileList.map(async (item) => {
+        const extension = item.match(/\.(\w+)(\?|$)/)[1];
+        if (extension === 'js') {
+            return addScript(item);
+        }
+        else if (extension === 'css') {
+            return addLink(item);
+        }
+    });
+
+    return Promise.all(promises);
+}
+
+/**
+ * 自动识别 css 或者 js 链接并从 head 中移除
+ * @param {string[]} fileList
+ */
+const autoRemove = (fileList) => {
+    const promises = fileList.map(async (item) => {
+        const extension = item.match(/\.(\w+)(\?|$)/)[1];
+        if (extension === 'js') {
+            return removeScript(item);
+        }
+        else if (extension === 'css') {
+            return removeLink(item);
+        }
+    });
+
+    return Promise.all(promises);
 }
 
 const insertBefore = (element, newEl) => {
@@ -175,7 +362,8 @@ const insertAfter = (element, newEl) => {
         if (parentNode) {
             if (element.nextElementSibling) {
                 parentNode.insertBefore(newEl, element.nextElementSibling)
-            } else {
+            }
+            else {
                 parentNode.appendChild(newEl)
             }
         }
@@ -190,7 +378,9 @@ const drag = (element, start, move, end) => {
         }
 
         if (!notDrag) {
-            e.preventDefault()
+            if (e.cancelable) {
+                e.preventDefault();
+            }
             e.stopPropagation()
 
             document.addEventListener('mousemove', handleDragMove)
@@ -387,11 +577,239 @@ const setIndeterminate = (object, state) => {
     }
 }
 
+const getOverflowParent = element => {
+    let parent = element.parentNode
+    while (parent.nodeType === 1) {
+        const style = getComputedStyle(parent)
+        const overflowY = style.getPropertyValue('overflow-y')
+        if (overflowY === 'auto' || overflowY === 'scroll') {
+            break;
+        }
+        parent = parent.parentNode
+    }
+    if (parent.nodeType !== 1) {
+        parent = getWindow()
+    }
+    return parent
+}
+
+/*
+ * @param {function} fn - 原函数
+ * @param {number} duration - 防抖时长
+ * @return {function} - 条件回调返回真时立即执行
+ */
+const debounce = function (fn, duration = 200, callback = null) {
+    let handler = null
+    return function () {
+        if (handler) {
+            clearTimeout(handler)
+        }
+        if (callback && typeof (callback) === 'function') {
+            const v = callback.apply(this, arguments)
+            if (v === true) {
+                handler = null
+            }
+        }
+        if (handler === null) {
+            fn.apply(this, arguments)
+
+            handler = setTimeout(() => {
+                handler = null
+            }, duration)
+        }
+        else {
+            handler = setTimeout(() => {
+                fn.apply(this, arguments)
+            }, duration)
+        }
+    }
+}
+
+export function openUrl(url, target = '_blank', features = null) {
+    window.open(url, target, features);
+}
+
+export function runEval(code) {
+    try {
+        return eval(code);
+    } catch (e) {
+        console.warn(e.message);
+        return e.message;
+    }
+}
+
+export function runFunction(code, arg) {
+    try {
+        var func = new Function(code);
+        return func(...arg);
+    } catch (e) {
+        console.warn(e.message);
+        return e.message;
+    }
+}
+
+export function isMobile() {
+    return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(navigator.userAgent);
+}
+
+const hashCode = str => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(1);
+        hash = (hash << 5) - hash + char;
+        hash |= 0;
+    }
+    return hash;
+}
+
+export function getFingerCode() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 200;
+    canvas.height = 200;
+
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgb(128, 0, 0)';
+    ctx.fillRect(10, 10, 100, 100);
+
+    ctx.fillStyle = 'rgb(0, 128, 0)';
+    ctx.fillRect(50, 50, 100, 100);
+    ctx.strokeStyle = 'rgb(0, 0, 128)'
+    ctx.lineWidth = 5;
+    ctx.strokeRect(30, 30, 80, 80);
+
+    ctx.font = '20px Arial';
+    ctx.fillStyle = 'rgb(0, 0, 0)';
+    ctx.fillText('BootstrapBlazor', 60, 116);
+
+    const dataURL = canvas.toDataURL();
+    const hash = hashCode(dataURL);
+    return hash.toString();
+}
+
+export function getHtml(options) {
+    let html = '';
+    let el = null;
+    if (options.id) {
+        el = document.getElementById(options.id);
+    }
+    else if (options.selector) {
+        el = document.querySelector(options.selector);
+    }
+    if (el) {
+        html = el.outerHTML;
+    }
+    return html;
+}
+
+
+export function getPreferredTheme() {
+    const storedTheme = getTheme()
+    if (storedTheme) {
+        return storedTheme
+    }
+
+    return getAutoThemeValue();
+}
+
+export function getTheme() {
+    return localStorage.getItem('theme') || document.documentElement.getAttribute('data-bs-theme') || 'light';
+}
+
+export function saveTheme(theme) {
+    if (localStorage) {
+        localStorage.setItem('theme', theme);
+    }
+}
+
+export function getAutoThemeValue() {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
+export function setTheme(theme, sync) {
+    if (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-bs-theme', 'dark')
+    }
+    else {
+        document.documentElement.setAttribute('data-bs-theme', theme);
+    }
+
+    if (sync === true) {
+        const providers = document.querySelectorAll('.bb-theme-mode');
+        providers.forEach(p => {
+            const activeItem = p.querySelector(`.dropdown-item[data-bb-theme-value="${theme}"]`);
+            setActiveTheme(p, activeItem)
+        })
+        saveTheme(theme);
+    }
+}
+
+export function setActiveTheme(el, activeItem) {
+    const currentTheme = el.querySelector('.active');
+    if (currentTheme) {
+        currentTheme.classList.remove('active');
+    }
+
+    if (activeItem) {
+        activeItem.classList.add('active');
+        const iconItem = activeItem.querySelector('[data-bb-theme-icon]');
+        if (iconItem) {
+            const icon = iconItem.getAttribute('data-bb-theme-icon');
+            if (icon) {
+                const toggleIcon = el.querySelector('.bb-theme-mode-active');
+                if (toggleIcon) {
+                    toggleIcon.outerHTML = `<i class="${icon} bb-theme-mode-active"></i>`;
+                }
+            }
+        }
+    }
+}
+
+export function switchTheme(theme, x = 0, y = 0, sync = true) {
+    if (isFunction(document.startViewTransition)) {
+        document.documentElement.style.setProperty('--bb-theme-x', `${x}px`);
+        document.documentElement.style.setProperty('--bb-theme-y', `${y}px`);
+        document.startViewTransition(() => {
+            setTheme(theme, sync);
+        });
+    }
+    else {
+        setTheme(theme, sync);
+    }
+}
+
+const deepMerge = (obj1, obj2) => {
+    for (let key in obj2) {
+        if (obj2.hasOwnProperty(key)) {
+            if (obj2[key] instanceof Object && obj1[key] instanceof Object) {
+                obj1[key] = deepMerge(obj1[key], obj2[key]);
+            }
+            else {
+                obj1[key] = obj2[key];
+            }
+        }
+    }
+    return obj1;
+}
+
+export function setTitle(title) {
+    document.title = title;
+}
+
 export {
+    autoAdd,
+    autoRemove,
+    addLinkBatch,
+    removeLinkBatch,
+    addScriptBatch,
+    removeScriptBatch,
     addLink,
     addScript,
     copy,
+    deepMerge,
+    debounce,
     drag,
+    getTextFromClipboard,
+    getAllClipboardContents,
     insertBefore,
     insertAfter,
     isDisabled,
@@ -405,6 +823,9 @@ export {
     getHeight,
     getInnerHeight,
     getInnerWidth,
+    getOuterHeight,
+    getOuterWidth,
+    getOverflowParent,
     getTargetElement,
     getTransitionDelayDurationFromElement,
     getWidth,

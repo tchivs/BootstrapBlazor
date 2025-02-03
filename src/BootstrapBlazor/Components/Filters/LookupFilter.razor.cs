@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.Extensions.Localization;
 
@@ -9,24 +10,36 @@ namespace BootstrapBlazor.Components;
 /// <summary>
 /// 枚举类型过滤组件
 /// </summary>
-public partial class LookupFilter
+public partial class LookupFilter : ILookup
 {
     private string? Value { get; set; }
 
-    private List<SelectedItem> Items { get; } = new List<SelectedItem>();
-
     /// <summary>
-    /// 获得/设置 相关枚举类型
+    /// <inheritdoc/>
     /// </summary>
-#if NET6_0_OR_GREATER
-    [EditorRequired]
-#endif
     [Parameter]
-    [NotNull]
     public IEnumerable<SelectedItem>? Lookup { get; set; }
 
     /// <summary>
-    /// 获得/设置 字典数据源字符串比较规则 默认 StringComparison.OrdinalIgnoreCase 大小写不敏感 
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public ILookupService? LookupService { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public string? LookupServiceKey { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public object? LookupServiceData { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
     public StringComparison LookupStringComparison { get; set; } = StringComparison.OrdinalIgnoreCase;
@@ -34,28 +47,31 @@ public partial class LookupFilter
     /// <summary>
     /// 获得/设置 相关枚举类型
     /// </summary>
-#if NET6_0_OR_GREATER
     [EditorRequired]
-#endif
     [Parameter]
     [NotNull]
     public Type? Type { get; set; }
+
+    /// <summary>
+    /// 获得 是否为 ShowSearch 呈现模式 默认为 false
+    /// </summary>
+    [Parameter]
+    public bool IsShowSearch { get; set; }
 
     [Inject]
     [NotNull]
     private IStringLocalizer<TableFilter>? Localizer { get; set; }
 
+    [Inject]
+    [NotNull]
+    private ILookupService? InjectLookupService { get; set; }
+
     /// <summary>
-    /// OnInitialized 方法
+    /// <inheritdoc/>
     /// </summary>
     protected override void OnInitialized()
     {
         base.OnInitialized();
-
-        if (Lookup == null)
-        {
-            throw new InvalidOperationException("the Parameter Lookup must be set.");
-        }
 
         if (Type == null)
         {
@@ -66,12 +82,29 @@ public partial class LookupFilter
         {
             TableFilter.ShowMoreButton = false;
         }
-        Items.Add(new SelectedItem("", Localizer["EnumFilter.AllText"].Value));
-        Items.AddRange(Lookup);
     }
 
     /// <summary>
-    /// 
+    /// <inheritdoc/>
+    /// </summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        var items = new List<SelectedItem>
+        {
+            new("", Localizer["EnumFilter.AllText"].Value)
+        };
+        var lookup = await this.GetItemsAsync(InjectLookupService, LookupServiceKey, LookupServiceData);
+        if (lookup != null)
+        {
+            items.AddRange(lookup);
+        }
+        Items = items;
+    }
+
+    /// <summary>
+    /// <inheritdoc/>
     /// </summary>
     public override void Reset()
     {
@@ -80,44 +113,41 @@ public partial class LookupFilter
     }
 
     /// <summary>
-    /// 
+    /// <inheritdoc/>
     /// </summary>
     /// <returns></returns>
-    public override IEnumerable<FilterKeyValueAction> GetFilterConditions()
+    public override FilterKeyValueAction GetFilterConditions()
     {
-        var filters = new List<FilterKeyValueAction>();
+        var filter = new FilterKeyValueAction() { Filters = [] };
         if (!string.IsNullOrEmpty(Value))
         {
             var type = Nullable.GetUnderlyingType(Type) ?? Type;
             var val = Convert.ChangeType(Value, type);
-            filters.Add(new FilterKeyValueAction()
+            filter.Filters.Add(new FilterKeyValueAction()
             {
                 FieldKey = FieldKey,
                 FieldValue = val,
                 FilterAction = FilterAction.Equal
             });
         }
-        return filters;
+        return filter;
     }
 
     /// <summary>
-    /// Override existing filter conditions
+    /// <inheritdoc/>
     /// </summary>
-    public override async Task SetFilterConditionsAsync(IEnumerable<FilterKeyValueAction> conditions)
+    public override async Task SetFilterConditionsAsync(FilterKeyValueAction filter)
     {
-        if (conditions.Any())
+        var first = filter.Filters?.FirstOrDefault() ?? filter;
+        var type = Nullable.GetUnderlyingType(Type) ?? Type;
+        if (first.FieldValue != null && first.FieldValue.GetType() == type)
         {
-            var type = Nullable.GetUnderlyingType(Type) ?? Type;
-            FilterKeyValueAction first = conditions.First();
-            if (first.FieldValue != null && first.FieldValue.GetType() == type)
-            {
-                Value = first.FieldValue.ToString();
-            }
-            else
-            {
-                Value = "";
-            }
+            Value = first.FieldValue.ToString();
         }
-        await base.SetFilterConditionsAsync(conditions);
+        else
+        {
+            Value = "";
+        }
+        await base.SetFilterConditionsAsync(filter);
     }
 }

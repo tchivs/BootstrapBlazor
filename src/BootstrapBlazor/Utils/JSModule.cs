@@ -1,29 +1,16 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace BootstrapBlazor.Components;
 
 /// <summary>
 /// 模块加载器
 /// </summary>
-public class JSModule : IAsyncDisposable
+/// <param name="jSObjectReference"></param>
+public class JSModule(IJSObjectReference? jSObjectReference) : IAsyncDisposable
 {
-    /// <summary>
-    /// IJSObjectReference 实例
-    /// </summary>
-    [NotNull]
-    private IJSObjectReference? Module { get; }
-
-    /// <summary>
-    /// 构造函数
-    /// </summary>
-    /// <param name="jSObjectReference"></param>
-    public JSModule(IJSObjectReference? jSObjectReference)
-    {
-        Module = jSObjectReference ?? throw new ArgumentNullException(nameof(jSObjectReference));
-    }
-
     /// <summary>
     /// InvokeVoidAsync 方法
     /// </summary>
@@ -60,26 +47,23 @@ public class JSModule : IAsyncDisposable
         {
             paras.AddRange(args);
         }
-        await InvokeVoidAsync();
-
-        [ExcludeFromCodeCoverage]
-        async ValueTask InvokeVoidAsync()
+        try
         {
-            try
+            if (jSObjectReference != null)
             {
-                await Module.InvokeVoidAsync(identifier, cancellationToken, paras.ToArray());
+                await jSObjectReference.InvokeVoidAsync(identifier, cancellationToken, [.. paras]);
             }
-#if NET6_0_OR_GREATER
-            catch (JSDisconnectedException) { }
-#endif
-#if DEBUG
-#else
-            catch (JSException) { }
-            catch (AggregateException) { }
-            catch (InvalidOperationException) { }
-#endif
-            catch (TaskCanceledException) { }
         }
+        catch (JSException)
+        {
+#if DEBUG
+            System.Console.WriteLine($"identifier: {identifier} args: {string.Join(" ", args!)}");
+            throw;
+#endif
+        }
+        catch (JSDisconnectedException) { }
+        catch (OperationCanceledException) { }
+        catch (ObjectDisposedException) { }
     }
 
     /// <summary>
@@ -88,7 +72,7 @@ public class JSModule : IAsyncDisposable
     /// <param name="identifier"></param>
     /// <param name="args"></param>
     /// <returns></returns>
-    public virtual ValueTask<TValue> InvokeAsync<TValue>(string identifier, params object?[]? args) => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+    public virtual ValueTask<TValue?> InvokeAsync<TValue>(string identifier, params object?[]? args) => InvokeAsync<TValue?>(identifier, CancellationToken.None, args);
 
     /// <summary>
     /// InvokeAsync 方法
@@ -97,11 +81,11 @@ public class JSModule : IAsyncDisposable
     /// <param name="timeout"></param>
     /// <param name="args"></param>
     /// <returns></returns>
-    public virtual ValueTask<TValue> InvokeAsync<TValue>(string identifier, TimeSpan timeout, params object?[]? args)
+    public virtual ValueTask<TValue?> InvokeAsync<TValue>(string identifier, TimeSpan timeout, params object?[]? args)
     {
         using CancellationTokenSource? cancellationTokenSource = ((timeout == Timeout.InfiniteTimeSpan) ? null : new CancellationTokenSource(timeout));
         CancellationToken cancellationToken = cancellationTokenSource?.Token ?? CancellationToken.None;
-        return InvokeAsync<TValue>(identifier, cancellationToken, args);
+        return InvokeAsync<TValue?>(identifier, cancellationToken, args);
     }
 
     /// <summary>
@@ -111,36 +95,34 @@ public class JSModule : IAsyncDisposable
     /// <param name="cancellationToken"></param>
     /// <param name="args"></param>
     /// <returns></returns>
-    public virtual async ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken = default, params object?[]? args)
+    public virtual async ValueTask<TValue?> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken = default, params object?[]? args)
     {
         var paras = new List<object?>();
         if (args != null)
         {
             paras.AddRange(args!);
         }
-        return await InvokeAsync();
 
-        [ExcludeFromCodeCoverage]
-        async ValueTask<TValue> InvokeAsync()
+        TValue? ret = default;
+        try
         {
-            TValue ret = default!;
-            try
+            if (jSObjectReference != null)
             {
-                ret = await Module.InvokeAsync<TValue>(identifier, cancellationToken, paras.ToArray());
+                ret = await jSObjectReference.InvokeAsync<TValue?>(identifier, cancellationToken, [.. paras]);
             }
-#if NET6_0_OR_GREATER
-            catch (JSDisconnectedException) { }
-#endif
-#if DEBUG
-#else
-            catch (JSException) { }
-            catch (AggregateException) { }
-            catch (InvalidOperationException) { }
-#endif
-            catch (TaskCanceledException) { }
-
-            return ret;
         }
+        catch (JSException)
+        {
+#if DEBUG
+            System.Console.WriteLine($"identifier: {identifier} args: {string.Join(" ", args!)}");
+            throw;
+#endif
+        }
+        catch (JSDisconnectedException) { }
+        catch (OperationCanceledException) { }
+        catch (ObjectDisposedException) { }
+
+        return ret;
     }
 
     /// <summary>
@@ -151,10 +133,12 @@ public class JSModule : IAsyncDisposable
     {
         if (disposing)
         {
-            // TODO: 微软的代码这里加上 await 就会线程死锁
             try
             {
-                await Module.DisposeAsync();
+                if (jSObjectReference != null)
+                {
+                    await jSObjectReference.DisposeAsync();
+                }
             }
             catch { }
         }

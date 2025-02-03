@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -27,7 +28,7 @@ public abstract class UploadBase<TValue> : ValidateBase<TValue>, IUpload
     /// <summary>
     /// 获得/设置 上传文件集合
     /// </summary>
-    protected List<UploadFile> UploadFiles { get; } = new List<UploadFile>();
+    protected List<UploadFile> UploadFiles { get; } = [];
 
     List<UploadFile> IUpload.UploadFiles { get => UploadFiles; }
 
@@ -44,13 +45,13 @@ public abstract class UploadBase<TValue> : ValidateBase<TValue>, IUpload
     public string? Capture { get; set; }
 
     /// <summary>
-    /// 获得/设置 点击删除按钮时回调此方法
+    /// 获得/设置 点击删除按钮时回调此方法 默认 null
     /// </summary>
     [Parameter]
     public Func<UploadFile, Task<bool>>? OnDelete { get; set; }
 
     /// <summary>
-    /// 获得/设置 点击浏览按钮时回调此方法
+    /// 获得/设置 点击浏览按钮时回调此方法 默认 null
     /// </summary>
     [Parameter]
     public Func<UploadFile, Task>? OnChange { get; set; }
@@ -59,8 +60,7 @@ public abstract class UploadBase<TValue> : ValidateBase<TValue>, IUpload
     /// 显示/隐藏验证结果方法
     /// </summary>
     /// <param name="results"></param>
-    /// <param name="validProperty">是否对本属性进行数据验证</param>
-    public override void ToggleMessage(IEnumerable<ValidationResult> results, bool validProperty)
+    public override void ToggleMessage(IEnumerable<ValidationResult> results)
     {
         if (FieldIdentifier != null)
         {
@@ -103,7 +103,7 @@ public abstract class UploadBase<TValue> : ValidateBase<TValue>, IUpload
     }
 
     /// <summary>
-    /// 
+    /// 上传文件改变时回调此方法
     /// </summary>
     /// <param name="args"></param>
     /// <returns></returns>

@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using System.Globalization;
 
@@ -9,18 +10,15 @@ namespace BootstrapBlazor.Components;
 /// <summary>
 /// Checkbox 组件
 /// </summary>
-[BootstrapModuleAutoLoader(ModuleName = "utility", AutoInvokeInit = false, AutoInvokeDispose = false)]
-public partial class Checkbox<TValue>
+[BootstrapModuleAutoLoader(JSObjectReference = true)]
+public partial class Checkbox<TValue> : ValidateBase<TValue>
 {
     /// <summary>
     /// 获得 class 样式集合
     /// </summary>
-    protected string? GetClassString(bool isButton = false) => CssBuilder.Default("form-check")
+    private string? ClassString => CssBuilder.Default("form-check")
         .AddClass("is-label", IsShowAfterLabel)
-        .AddClass("is-checked", State == CheckboxState.Checked)
-        .AddClass("is-indeterminate", State == CheckboxState.Indeterminate)
-        .AddClass($"form-check-{Color.ToDescriptionString()}", Color != Color.None && !isButton)
-        .AddClass($"bg-{Color.ToDescriptionString()}", Color != Color.None && isButton && State == CheckboxState.Checked)
+        .AddClass($"form-check-{Color.ToDescriptionString()}", Color != Color.None)
         .AddClass($"form-check-{Size.ToDescriptionString()}", Size != Size.None)
         .AddClass("disabled", IsDisabled)
         .AddClass(ValidCss)
@@ -30,7 +28,7 @@ public partial class Checkbox<TValue>
     private bool IsShowAfterLabel => ShowAfterLabel && !string.IsNullOrEmpty(DisplayText);
 
     /// <summary>
-    /// 
+    /// Input 元素样式
     /// </summary>
     protected string? InputClassString => CssBuilder.Default("form-check-input")
         .AddClass($"border-{Color.ToDescriptionString()}", Color != Color.None)
@@ -38,7 +36,7 @@ public partial class Checkbox<TValue>
         .Build();
 
     /// <summary>
-    /// 
+    /// Check 状态字符串
     /// </summary>
     protected string? CheckedString => State switch
     {
@@ -76,11 +74,17 @@ public partial class Checkbox<TValue>
     public CheckboxState State { get; set; }
 
     /// <summary>
-    /// State 状态改变回调方法
+    /// 获得/设置 State 状态改变回调方法
     /// </summary>
     /// <value></value>
     [Parameter]
     public EventCallback<CheckboxState> StateChanged { get; set; }
+
+    /// <summary>
+    /// 获得/设置 选中状态改变前回调此方法 返回 false 可以阻止状态改变
+    /// </summary>
+    [Parameter]
+    public Func<CheckboxState, Task<bool>>? OnBeforeStateChanged { get; set; }
 
     /// <summary>
     /// 获得/设置 选择框状态改变时回调此方法
@@ -95,7 +99,13 @@ public partial class Checkbox<TValue>
     public bool StopPropagation { get; set; }
 
     /// <summary>
-    /// OnInitialized 方法
+    /// 获得/设置 子组件 RenderFragment 实例
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
     /// </summary>
     protected override void OnInitialized()
     {
@@ -105,7 +115,7 @@ public partial class Checkbox<TValue>
     }
 
     /// <summary>
-    /// OnParametersSet 方法
+    /// <inheritdoc/>
     /// </summary>
     protected override void OnParametersSet()
     {
@@ -113,112 +123,130 @@ public partial class Checkbox<TValue>
 
         if (ShowAfterLabel)
         {
+            DisplayText ??= FieldIdentifier?.GetDisplayName();
             ShowLabel = false;
         }
 
-        if (IsBoolean && Value != null && State != CheckboxState.Indeterminate)
+        if (IsBoolean && Value != null && State != CheckboxState.Indeterminate && BindConverter.TryConvertToBool(Value, CultureInfo.InvariantCulture, out var v))
         {
-            if (BindConverter.TryConvertToBool(Value, CultureInfo.InvariantCulture, out var v))
-            {
-                State = v ? CheckboxState.Checked : CheckboxState.UnChecked;
-            }
-        }
-    }
-
-    /// <summary>
-    /// OnAfterRender 方法
-    /// </summary>
-    /// <param name="firstRender"></param>
-    protected override void OnAfterRender(bool firstRender)
-    {
-        base.OnAfterRender(firstRender);
-
-        _peddingStateChanged = false;
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <returns></returns>
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        await base.OnAfterRenderAsync(firstRender);
-
-        await InvokeVoidAsync("setIndeterminate", Id, State == CheckboxState.Indeterminate);
-    }
-
-    /// <summary>
-    /// 点击选择框方法
-    /// </summary>
-    private async Task OnToggleClick()
-    {
-        if (!IsDisabled)
-        {
-            _peddingStateChanged = true;
-            await InternalStateChanged(State == CheckboxState.Checked ? CheckboxState.UnChecked : CheckboxState.Checked);
-        }
-    }
-
-    /// <summary>
-    /// 此变量为了提高性能，避免循环更新
-    /// </summary>
-    private bool _peddingStateChanged;
-
-    private async Task InternalStateChanged(CheckboxState state)
-    {
-        if (_peddingStateChanged)
-        {
-            if (IsBoolean)
-            {
-                CurrentValue = (TValue)(object)(state == CheckboxState.Checked);
-            }
-
-            if (State != state)
-            {
-                State = state;
-                if (StateChanged.HasDelegate)
-                {
-                    await StateChanged.InvokeAsync(State);
-                }
-
-                if (OnStateChanged != null)
-                {
-                    await OnStateChanged.Invoke(State, Value);
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// 设置 复选框状态方法
-    /// </summary>
-    /// <param name="state"></param>
-    public virtual async Task SetState(CheckboxState state)
-    {
-        if (!_peddingStateChanged)
-        {
-            _peddingStateChanged = true;
-
-            await InternalStateChanged(state);
-            StateHasChanged();
+            State = v ? CheckboxState.Checked : CheckboxState.UnChecked;
         }
     }
 
     /// <summary>
     /// <inheritdoc/>
     /// </summary>
-    /// <param name="disposing"></param>
-    /// <returns></returns>
-    protected override async ValueTask DisposeAsync(bool disposing)
+    /// <param name="firstRender"></param>
+    protected override void OnAfterRender(bool firstRender)
     {
-        if (disposing)
+        base.OnAfterRender(firstRender);
+
+        _paddingStateChanged = false;
+    }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    /// <returns></returns>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+
+        await InvokeVoidAsync("update", Id, State == CheckboxState.Indeterminate, State == CheckboxState.Checked);
+    }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    /// <returns></returns>
+    protected override Task InvokeInitAsync() => InvokeVoidAsync("init", Id, Interop, nameof(OnStateChangedAsync));
+
+    /// <summary>
+    /// 点击组件触发方法 内部调用 <see cref="OnBeforeStateChanged"/> 回调方法
+    /// </summary>
+    /// <returns></returns>
+    public async Task OnToggleClick()
+    {
+        var valid = true;
+        CheckboxState state;
+        if (State == CheckboxState.Indeterminate)
         {
-            if (Module != null)
+            state = CheckboxState.Checked;
+        }
+        else
+        {
+            state = State == CheckboxState.Checked ? CheckboxState.UnChecked : CheckboxState.Checked;
+        }
+        if (OnBeforeStateChanged != null)
+        {
+            valid = await OnBeforeStateChanged(state);
+        }
+
+        if (valid)
+        {
+            await InternalStateChanged(state);
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// 触发 Click 方法 由 JavaScript 调用
+    /// </summary>
+    /// <returns></returns>
+    [JSInvokable]
+    public ValueTask OnStateChangedAsync(CheckboxState state)
+    {
+        State = state;
+        return ValueTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// 此变量为了提高性能，避免循环更新
+    /// </summary>
+    private bool _paddingStateChanged;
+
+    private async Task<bool> InternalStateChanged(CheckboxState state)
+    {
+        var ret = true;
+        _paddingStateChanged = true;
+
+        if (IsBoolean)
+        {
+            CurrentValue = (TValue)(object)(state == CheckboxState.Checked);
+
+            if (ValueChanged.HasDelegate)
             {
-                await Module.DisposeAsync();
-                Module = null;
+                ret = false;
             }
         }
-        await base.DisposeAsync(disposing);
+
+        State = state;
+        if (StateChanged.HasDelegate)
+        {
+            await StateChanged.InvokeAsync(State);
+            ret = false;
+        }
+
+        if (OnStateChanged != null)
+        {
+            await OnStateChanged(State, Value);
+        }
+        return ret;
+    }
+
+    /// <summary>
+    /// 设置 复选框状态方法
+    /// </summary>
+    /// <param name="state"></param>
+    public async Task SetState(CheckboxState state)
+    {
+        if (!_paddingStateChanged)
+        {
+            var render = await InternalStateChanged(state);
+            if (render)
+            {
+                StateHasChanged();
+            }
+        }
     }
 }

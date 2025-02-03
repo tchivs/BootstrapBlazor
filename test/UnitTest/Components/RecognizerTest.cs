@@ -1,11 +1,9 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
-
-using Microsoft.Extensions.DependencyInjection;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
-
 
 public class RecognizerTest : SpeechTestBase
 {
@@ -87,5 +85,23 @@ public class RecognizerTest : SpeechTestBase
         {
             pb.Add(a => a.Show, false);
         });
+    }
+
+    [Fact]
+    public void IsCancelled_Ok()
+    {
+        var cut = Context.RenderComponent<SpeechWave>();
+        var pi = cut.Instance.GetType().GetProperty("IsShow", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var tokenPi = cut.Instance.GetType().GetProperty("Token", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        Assert.False((bool?)pi?.GetValue(cut.Instance));
+
+        var token = new CancellationTokenSource();
+        tokenPi?.SetValue(cut.Instance, token);
+        Assert.True((bool?)pi?.GetValue(cut.Instance));
+
+        token.Cancel();
+        Assert.False((bool?)pi?.GetValue(cut.Instance));
+        Context.DisposeComponents();
     }
 }

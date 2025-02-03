@@ -1,8 +1,8 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using BootstrapBlazor.Shared;
 using Microsoft.AspNetCore.Components.Forms;
 using System.ComponentModel.DataAnnotations;
 
@@ -88,7 +88,39 @@ public class ValidateTest : BootstrapBlazorTestBase
         {
             builder.Add(a => a.ShowLabel, false);
         });
-        Assert.DoesNotContain("label", cut.Markup);
+        cut.WaitForAssertion(() => cut.DoesNotContain("label"));
+    }
+
+    [Fact]
+    public void ValidateForm_Group_Ok()
+    {
+        var model = new Foo() { Name = "Name-Test" };
+        var cut = Context.RenderComponent<ValidateForm>(builder =>
+        {
+            builder.Add(a => a.Model, model);
+            builder.AddChildContent<BootstrapInputGroup>(pb =>
+            {
+                pb.AddChildContent<BootstrapInputGroupLabel>(p =>
+                {
+                    p.Add(a => a.DisplayText, "Name-Test");
+                });
+                pb.AddChildContent<BootstrapInput<string>>(p =>
+                {
+                    p.Add(a => a.Value, model.Name);
+                    p.Add(a => a.ValueExpression, model.GenerateValueExpression());
+                });
+            });
+        });
+
+        // ValidateForm 验证表单中 使用 InputGroup 组件
+        cut.Contains("Name-Test");
+
+        var input = cut.FindComponent<BootstrapInput<string>>();
+        input.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.ShowLabel, true);
+        });
+        cut.Contains("姓名");
     }
 
     [Fact]
@@ -111,14 +143,14 @@ public class ValidateTest : BootstrapBlazorTestBase
         {
             builder.Add(a => a.ShowLabel, false);
         });
-        Assert.DoesNotContain("label", cut.Markup);
+        cut.WaitForAssertion(() => cut.DoesNotContain("label"));
 
         // IsShowLabel 为空时 不显示标签
         cut.SetParametersAndRender(builder =>
         {
             builder.Add(a => a.ShowLabel, null);
         });
-        Assert.DoesNotContain("label", cut.Markup);
+        cut.WaitForAssertion(() => cut.DoesNotContain("label"));
 
         // 开启双向绑定时 IsShowLabel 为空时 不显示标签
         cut.SetParametersAndRender(builder =>
@@ -127,7 +159,7 @@ public class ValidateTest : BootstrapBlazorTestBase
             builder.Add(a => a.Value, model.Name);
             builder.Add(a => a.ValueExpression, model.GenerateValueExpression());
         });
-        Assert.DoesNotContain("label", cut.Markup);
+        cut.WaitForAssertion(() => cut.DoesNotContain("label"));
 
         // 开启双向绑定时 IsShowLabel=false 时 不显示标签
         cut.SetParametersAndRender(builder =>
@@ -136,7 +168,7 @@ public class ValidateTest : BootstrapBlazorTestBase
             builder.Add(a => a.Value, model.Name);
             builder.Add(a => a.ValueExpression, model.GenerateValueExpression());
         });
-        Assert.DoesNotContain("label", cut.Markup);
+        cut.WaitForAssertion(() => cut.DoesNotContain("label"));
 
         // 开启双向绑定时 IsShowLabel=true 时 显示标签
         cut.SetParametersAndRender(builder =>
@@ -145,7 +177,7 @@ public class ValidateTest : BootstrapBlazorTestBase
             builder.Add(a => a.Value, model.Name);
             builder.Add(a => a.ValueExpression, model.GenerateValueExpression());
         });
-        Assert.Contains("label", cut.Markup);
+        cut.WaitForAssertion(() => cut.Contains("label"));
     }
 
     [Fact]
@@ -328,6 +360,23 @@ public class ValidateTest : BootstrapBlazorTestBase
             form.Submit();
         });
         Assert.True(invalid);
+
+        // 自定义验证规则未设置 member name
+        rules =
+        [
+            new FormItemValidator(new MockValidationAttribute())
+        ];
+        input.SetParametersAndRender(pb =>
+        {
+            pb.Add(v => v.ValidateRules, rules);
+        });
+        invalid = false;
+        await cut.InvokeAsync(() =>
+        {
+            c.Change("argo@163.com");
+            form.Submit();
+        });
+        Assert.True(invalid);
     }
 
     [Fact]
@@ -400,8 +449,8 @@ public class ValidateTest : BootstrapBlazorTestBase
                 pb.Add(v => v.ValueExpression, model.GenerateValueExpression(nameof(Foo.Hobby), typeof(IEnumerable<string>)));
                 pb.Add(v => v.Items, new List<SelectedItem>()
                 {
-                    new SelectedItem("1", "test1"),
-                    new SelectedItem("2", "test2")
+                    new("1", "test1"),
+                    new("2", "test2")
                 });
             });
             builder.AddChildContent<Button>(pb =>
@@ -476,9 +525,11 @@ public class ValidateTest : BootstrapBlazorTestBase
     }
 
     [Fact]
-    public async Task ValidateType_Ok()
+    public void ValidateType_Ok()
     {
         var model = new Foo() { Count = 0 };
+        var dog = new Dog() { Count = 10 };
+
         var cut = Context.RenderComponent<RenderTemplate>(builder =>
         {
             builder.AddChildContent<MockValidate<int>>(pb =>
@@ -486,9 +537,16 @@ public class ValidateTest : BootstrapBlazorTestBase
                 pb.Add(v => v.Value, model.Count);
                 pb.Add(v => v.ValueExpression, model.GenerateValueExpression(nameof(Foo.Count), typeof(int)));
             });
+            builder.AddChildContent<MockValidate<int?>>(pb =>
+            {
+                pb.Add(v => v.Value, dog.Count);
+            });
         });
         var intValidate = cut.FindComponent<MockValidate<int>>();
-        await intValidate.Instance.ValidateTypeTest(model);
+        cut.InvokeAsync(() => intValidate.Instance.ValidateTypeTest(model));
+
+        var nullableIntValidate = cut.FindComponent<MockValidate<int?>>();
+        cut.InvokeAsync(() => nullableIntValidate.Instance.ValidateTypeTest(dog));
     }
 
     [Fact]
@@ -588,7 +646,7 @@ public class ValidateTest : BootstrapBlazorTestBase
             CurrentValueAsString = "1";
         }
 
-        public async Task ValidateTypeTest(Foo model)
+        public async Task ValidateTypeTest(object model)
         {
             CurrentValueAsString = "test";
 
@@ -623,5 +681,18 @@ public class ValidateTest : BootstrapBlazorTestBase
     {
         [Required]
         public new int Foo { get; set; }
+    }
+
+    class Dog
+    {
+        public int? Count { get; set; }
+    }
+
+    class MockValidationAttribute : ValidationAttribute
+    {
+        protected override ValidationResult IsValid(object? value, ValidationContext validationContext)
+        {
+            return new ValidationResult($"The {validationContext.DisplayName} field must be a future date.");
+        }
     }
 }

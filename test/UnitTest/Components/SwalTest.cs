@@ -1,10 +1,11 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 namespace UnitTest.Components;
 
-public class SwalTest : SwalTestBase
+public class SwalTest : BootstrapBlazorTestBase
 {
     [Fact]
     public void Show_Ok()
@@ -109,8 +110,11 @@ public class SwalTest : SwalTestBase
             IsAutoHide = true,
             Delay = 1000
         }));
-        var button = cut.Find(".btn-secondary");
-        cut.InvokeAsync(() => button.Click());
+        cut.InvokeAsync(() =>
+        {
+            var button = cut.Find(".btn-secondary");
+            button.Click();
+        });
         cut.InvokeAsync(() => modal.Instance.CloseCallback());
 
         // auto close
@@ -162,11 +166,14 @@ public class SwalTest : SwalTestBase
         cut.Contains("test-confirm-text");
 
         // 触发确认按钮
-        button = cut.Find(".btn-danger");
-        cut.InvokeAsync(() => button.Click());
+        cut.InvokeAsync(() =>
+        {
+            var button = cut.Find(".btn-danger");
+            button.Click();
+            Assert.True(result);
+            Assert.True(confirmed);
+        });
         cut.InvokeAsync(() => modal.Instance.CloseCallback());
-        Assert.True(result);
-        Assert.True(confirmed);
 
         // OnCloseAsync 测试
         Task.Run(async () => await cut.InvokeAsync(async () =>
@@ -195,8 +202,11 @@ public class SwalTest : SwalTestBase
         }
 
         // 触发关闭按钮
-        button = cut.Find(".btn-secondary");
-        cut.InvokeAsync(() => button.Click());
+        cut.InvokeAsync(() =>
+        {
+            var button = cut.Find(".btn-secondary");
+            button.Click();
+        });
         cut.InvokeAsync(() => modal.Instance.CloseCallback());
 
         // 带确认框的 Select
@@ -206,8 +216,8 @@ public class SwalTest : SwalTestBase
             {
                 pb.Add(a => a.Items, new List<SelectedItem>()
                 {
-                    new SelectedItem("1", "Test1"),
-                    new SelectedItem("2", "Test2") { IsDisabled = true }
+                    new("1", "Test1"),
+                    new("2", "Test2") { IsDisabled = true }
                 });
                 pb.Add(a => a.SwalCategory, SwalCategory.Question);
                 pb.Add(a => a.SwalTitle, "Swal-Title");
@@ -228,8 +238,11 @@ public class SwalTest : SwalTestBase
                 break;
             }
         }
-        button = cut.Find(".btn-danger");
-        cut.InvokeAsync(() => button.Click());
+        cut.InvokeAsync(() =>
+        {
+            var button = cut.Find(".btn-danger");
+            button.Click();
+        });
         cut.InvokeAsync(() => modal.Instance.CloseCallback());
 
         // test force
@@ -246,8 +259,11 @@ public class SwalTest : SwalTestBase
 
         forceOption.ForceDelay = false;
         cut.InvokeAsync(() => swal.Show(forceOption));
-        cut.InvokeAsync(() => modal.Instance.CloseCallback());
-        Assert.Equal(4000, forceOption.Delay);
+        cut.InvokeAsync(async () =>
+        {
+            await modal.Instance.CloseCallback();
+            Assert.Equal(4000, forceOption.Delay);
+        });
 
         // 自动关闭
         cut.InvokeAsync(() => swal.Show(new SwalOption()
@@ -255,7 +271,11 @@ public class SwalTest : SwalTestBase
             Content = "I am auto hide",
             IsAutoHide = true,
             ForceDelay = true,
-            Delay = 500
+            Delay = 500,
+            OnCloseAsync = () =>
+            {
+                return Task.CompletedTask;
+            }
         }));
         Thread.Sleep(150);
         // 弹窗显示

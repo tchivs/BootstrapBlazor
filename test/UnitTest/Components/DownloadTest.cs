@@ -1,8 +1,8 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
 namespace UnitTest.Components;
@@ -20,7 +20,7 @@ public class DownloadTest : BootstrapBlazorTestBase
             {
                 pb.Add(a => a.OnClick, async () =>
                 {
-                    await downloadService.DownloadFromByteArrayAsync("test.txt", new byte[] { 0x01, 0x02 });
+                    await downloadService.DownloadFromByteArrayAsync("test.txt", [0x01, 0x02]);
                     download = true;
                 });
             });
@@ -35,7 +35,7 @@ public class DownloadTest : BootstrapBlazorTestBase
     {
         var fileName = Path.Combine(AppContext.BaseDirectory, "down.log");
         using var fs = File.OpenWrite(fileName);
-        fs.Write(new byte[] { 0x01, 0x02 }, 0, 2);
+        fs.Write([0x01, 0x02], 0, 2);
         fs.Close();
 
         var download = false;
@@ -67,7 +67,7 @@ public class DownloadTest : BootstrapBlazorTestBase
             {
                 pb.Add(a => a.OnClick, async () =>
                 {
-                    using var stream = new MemoryStream(new byte[] { 0x01, 0x02 });
+                    using var stream = new MemoryStream([0x01, 0x02]);
                     await downloadService.DownloadFromStreamAsync("test.txt", stream);
                     download = true;
                 });
@@ -79,11 +79,12 @@ public class DownloadTest : BootstrapBlazorTestBase
     }
 
     [Fact]
-    public void DownloadFromStreamAsync_Null()
+    public async Task DownloadFromStreamAsync_Null()
     {
         var downloadService = Context.Services.GetRequiredService<DownloadService>();
         var cut = Context.RenderComponent<BootstrapBlazorRoot>(pb =>
         {
+            pb.Add(a => a.EnableErrorLogger, false);
             pb.AddChildContent<Button>(pb =>
             {
                 pb.Add(a => a.OnClick, async () =>
@@ -94,7 +95,7 @@ public class DownloadTest : BootstrapBlazorTestBase
             });
         });
         var btn = cut.Find("button");
-        Assert.ThrowsAsync<InvalidOperationException>(() => cut.InvokeAsync(() => btn.Click()));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => cut.InvokeAsync(() => btn.Click()));
     }
 
     [Fact]
@@ -158,11 +159,12 @@ public class DownloadTest : BootstrapBlazorTestBase
     }
 
     [Fact]
-    public void DownloadFromUrlAsync_Null()
+    public async Task DownloadFromUrlAsync_Null()
     {
         var downloadService = Context.Services.GetRequiredService<DownloadService>();
         var cut = Context.RenderComponent<BootstrapBlazorRoot>(pb =>
         {
+            pb.Add(a => a.EnableErrorLogger, false);
             pb.AddChildContent<Button>(pb =>
             {
                 pb.Add(a => a.OnClick, async () =>
@@ -172,6 +174,6 @@ public class DownloadTest : BootstrapBlazorTestBase
             });
         });
         var btn = cut.Find("button");
-        Assert.ThrowsAsync<InvalidOperationException>(() => cut.InvokeAsync(() => btn.Click()));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => cut.InvokeAsync(() => btn.Click()));
     }
 }

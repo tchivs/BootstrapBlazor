@@ -1,8 +1,8 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using BootstrapBlazor.Localization.Json;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Localization;
 using System.Collections.Concurrent;
@@ -21,7 +21,6 @@ public partial class ValidateForm
     /// <see cref="EditContext"/> is determined to be valid.
     /// </summary>
     [Parameter]
-    [NotNull]
     public Func<EditContext, Task>? OnValidSubmit { get; set; }
 
     /// <summary>
@@ -29,7 +28,6 @@ public partial class ValidateForm
     /// <see cref="EditContext"/> is determined to be invalid.
     /// </summary>
     [Parameter]
-    [NotNull]
     public Func<EditContext, Task>? OnInvalidSubmit { get; set; }
 
     /// <summary>
@@ -38,6 +36,12 @@ public partial class ValidateForm
     [Parameter]
     [NotNull]
     public Action<string, object?>? OnFieldValueChanged { get; set; }
+
+    /// <summary>
+    /// 获得/设置 是否显示所有验证失败字段的提示信息 默认 false 仅显示第一个验证失败字段的提示信息
+    /// </summary>
+    [Parameter]
+    public bool ShowAllInvalidResult { get; set; }
 
     /// <summary>
     /// 获得/设置 是否验证所有字段 默认 false
@@ -67,10 +71,10 @@ public partial class ValidateForm
     public bool ShowRequiredMark { get; set; } = true;
 
     /// <summary>
-    /// 获得/设置 是否显示验证表单内的 Label 默认为 显示
+    /// 获得/设置 是否显示验证表单内的 Label 默认为 null
     /// </summary>
     [Parameter]
-    public bool ShowLabel { get; set; } = true;
+    public bool? ShowLabel { get; set; }
 
     /// <summary>
     /// 获得/设置 是否显示标签 Tooltip 多用于标签文字过长导致裁减时使用 默认 null
@@ -83,6 +87,12 @@ public partial class ValidateForm
     /// </summary>
     [Parameter]
     public bool? DisableAutoSubmitFormByEnter { get; set; }
+
+    /// <summary>
+    /// 获得/设置 标签宽度 默认 null 未设置使用全局设置 <code>--bb-row-label-width</code> 值
+    /// </summary>
+    [Parameter]
+    public int? LabelWidth { get; set; }
 
     [Inject]
     [NotNull]
@@ -99,9 +109,30 @@ public partial class ValidateForm
     /// <summary>
     /// 验证组件缓存
     /// </summary>
-    private ConcurrentDictionary<(string FieldName, Type ModelType), (FieldIdentifier FieldIdentifier, IValidateComponent ValidateComponent)> ValidatorCache { get; } = new();
+    private readonly ConcurrentDictionary<(string FieldName, Type ModelType), (FieldIdentifier FieldIdentifier, IValidateComponent ValidateComponent)> _validatorCache = new();
+
+    /// <summary>
+    /// 验证组件验证结果缓存
+    /// </summary>
+    private readonly ConcurrentDictionary<IValidateComponent, List<ValidationResult>> _validateResults = new();
 
     private string? DisableAutoSubmitString => (DisableAutoSubmitFormByEnter.HasValue && DisableAutoSubmitFormByEnter.Value) ? "true" : null;
+
+    /// <summary>
+    /// 验证合法成员集合
+    /// </summary>
+    internal List<string> ValidMemberNames { get; } = [];
+
+    /// <summary>
+    /// 验证非法成员集合
+    /// </summary>
+    internal List<ValidationResult> InvalidMemberNames { get; } = [];
+
+    private string? ShowAllInvalidResultString => ShowAllInvalidResult ? "true" : null;
+
+    private string? StyleString => CssBuilder.Default()
+        .AddStyle("--bb-row-label-width", $"{LabelWidth}px", LabelWidth.HasValue)
+        .Build();
 
     /// <summary>
     /// OnParametersSet 方法
@@ -123,7 +154,7 @@ public partial class ValidateForm
     /// <param name="value"></param>
     internal void AddValidator((string FieldName, Type ModelType) key, (FieldIdentifier FieldIdentifier, IValidateComponent IValidateComponent) value)
     {
-        ValidatorCache.TryAdd(key, value);
+        _validatorCache.TryAdd(key, value);
     }
 
     /// <summary>
@@ -131,7 +162,7 @@ public partial class ValidateForm
     /// </summary>
     /// <param name="key"></param>
     /// <param name="value"></param>
-    internal bool TryRemoveValidator((string FieldName, Type ModelType) key, [MaybeNullWhen(false)] out (FieldIdentifier FieldIdentifier, IValidateComponent IValidateComponent) value) => ValidatorCache.TryRemove(key, out value);
+    internal bool TryRemoveValidator((string FieldName, Type ModelType) key, out (FieldIdentifier FieldIdentifier, IValidateComponent IValidateComponent) value) => _validatorCache.TryRemove(key, out value);
 
     /// <summary>
     /// 设置指定字段错误信息
@@ -140,31 +171,34 @@ public partial class ValidateForm
     /// <param name="errorMessage">错误描述信息，可为空，为空时查找资源文件</param>
     public void SetError<TModel>(Expression<Func<TModel, object?>> expression, string errorMessage)
     {
-        if (expression.Body is UnaryExpression unary && unary.Operand is MemberExpression mem)
+        switch (expression.Body)
         {
-            InternalSetError(mem, errorMessage);
-        }
-        else if (expression.Body is MemberExpression exp)
-        {
-            InternalSetError(exp, errorMessage);
+            case UnaryExpression { Operand: MemberExpression mem }:
+                InternalSetError(mem, errorMessage);
+                break;
+            case MemberExpression exp:
+                InternalSetError(exp, errorMessage);
+                break;
         }
     }
 
     private void InternalSetError(MemberExpression exp, string errorMessage)
     {
-        var fieldName = exp.Member.Name;
         if (exp.Expression != null)
         {
+            var fieldName = exp.Member.Name;
             var modelType = exp.Expression.Type;
-            var validator = ValidatorCache.FirstOrDefault(c => c.Key.ModelType == modelType && c.Key.FieldName == fieldName).Value.ValidateComponent;
-            if (validator != null)
+            var validator = _validatorCache.FirstOrDefault(c => c.Key.ModelType == modelType && c.Key.FieldName == fieldName).Value.ValidateComponent;
+            if (validator == null)
             {
-                var results = new List<ValidationResult>
-                {
-                    new ValidationResult(errorMessage, new string[] { fieldName })
-                };
-                validator.ToggleMessage(results, true);
+                return;
             }
+
+            var results = new List<ValidationResult>
+            {
+                new(errorMessage, [fieldName])
+            };
+            validator.ToggleMessage(results);
         }
     }
 
@@ -179,9 +213,9 @@ public partial class ValidateForm
         {
             var results = new List<ValidationResult>
             {
-                new ValidationResult(errorMessage, new string[] { fieldName })
+                new(errorMessage, [fieldName])
             };
-            validator.ToggleMessage(results, true);
+            validator.ToggleMessage(results);
         }
     }
 
@@ -207,9 +241,9 @@ public partial class ValidateForm
         return propNames.IsEmpty;
     }
 
-    private bool TryGetValidator(Type modelType, string fieldName, [NotNullWhen(true)] out IValidateComponent validator)
+    private bool TryGetValidator(Type modelType, string fieldName, out IValidateComponent validator)
     {
-        validator = ValidatorCache.FirstOrDefault(c => c.Key.ModelType == modelType && c.Key.FieldName == fieldName).Value.ValidateComponent;
+        validator = _validatorCache.FirstOrDefault(c => c.Key.ModelType == modelType && c.Key.FieldName == fieldName).Value.ValidateComponent;
         return validator != null;
     }
 
@@ -222,6 +256,8 @@ public partial class ValidateForm
     /// <param name="results"></param>
     internal async Task ValidateObject(ValidationContext context, List<ValidationResult> results)
     {
+        _validateResults.Clear();
+
         if (ValidateAllProperties)
         {
             await ValidateProperty(context, results);
@@ -229,33 +265,69 @@ public partial class ValidateForm
         else
         {
             // 遍历所有可验证组件进行数据验证
-            foreach (var key in ValidatorCache.Keys)
+            foreach (var key in _validatorCache.Keys)
             {
                 // 验证 DataAnnotations
-                var validatorValue = ValidatorCache[key];
-                var validator = validatorValue.ValidateComponent;
-                var fieldIdentifier = validatorValue.FieldIdentifier;
-                if (validator.IsNeedValidate)
+                var (fieldIdentifier, validator) = _validatorCache[key];
+                if (!validator.IsNeedValidate)
                 {
-                    var messages = new List<ValidationResult>();
-                    var pi = key.ModelType.GetPropertyByName(key.FieldName);
-                    if (pi != null)
-                    {
-                        var propertyValidateContext = new ValidationContext(fieldIdentifier.Model, context, null)
-                        {
-                            MemberName = fieldIdentifier.FieldName,
-                            DisplayName = fieldIdentifier.GetDisplayName()
-                        };
-
-                        // 设置其关联属性字段
-                        var propertyValue = Utility.GetPropertyValue(fieldIdentifier.Model, fieldIdentifier.FieldName);
-
-                        await ValidateAsync(validator, propertyValidateContext, messages, pi, propertyValue);
-                    }
-                    // 客户端提示
-                    validator.ToggleMessage(messages, false);
-                    results.AddRange(messages);
+                    continue;
                 }
+
+                var messages = new List<ValidationResult>();
+                var pi = key.ModelType.GetPropertyByName(key.FieldName);
+                if (pi != null)
+                {
+                    var propertyValidateContext = new ValidationContext(fieldIdentifier.Model, context, null)
+                    {
+                        MemberName = fieldIdentifier.FieldName,
+                        DisplayName = fieldIdentifier.GetDisplayName()
+                    };
+
+                    // 设置其关联属性字段
+                    var propertyValue = Utility.GetPropertyValue(fieldIdentifier.Model, fieldIdentifier.FieldName);
+
+                    await ValidateAsync(validator, propertyValidateContext, messages, pi, propertyValue);
+                }
+                _validateResults.TryAdd(validator, messages);
+                results.AddRange(messages);
+            }
+
+            // 验证 IValidatableObject
+            if (results.Count == 0)
+            {
+                IValidatableObject? validate;
+                if (context.ObjectInstance is IValidatableObject v)
+                {
+                    validate = v;
+                }
+                else
+                {
+                    validate = context.GetInstanceFromMetadataType<IValidatableObject>();
+                }
+                if (validate != null)
+                {
+                    var messages = validate.Validate(context).ToList();
+                    if (messages.Count > 0)
+                    {
+                        foreach (var key in _validatorCache.Keys)
+                        {
+                            var validatorValue = _validatorCache[key];
+                            var validator = validatorValue.ValidateComponent;
+                            if (validator.IsNeedValidate)
+                            {
+                                _validateResults[validator].AddRange(messages);
+                            }
+                        }
+                        results.AddRange(messages);
+                    }
+                }
+            }
+
+            ValidMemberNames.RemoveAll(name => _validateResults.Values.SelectMany(i => i).Any(i => i.MemberNames.Contains(name)));
+            foreach (var (validator, messages) in _validateResults)
+            {
+                validator.ToggleMessage(messages);
             }
         }
     }
@@ -267,7 +339,7 @@ public partial class ValidateForm
     /// <param name="results"></param>
     internal async Task ValidateFieldAsync(ValidationContext context, List<ValidationResult> results)
     {
-        if (!string.IsNullOrEmpty(context.MemberName) && ValidatorCache.TryGetValue((context.MemberName, context.ObjectType), out var v))
+        if (!string.IsNullOrEmpty(context.MemberName) && _validatorCache.TryGetValue((context.MemberName, context.ObjectType), out var v))
         {
             var validator = v.ValidateComponent;
             if (validator.IsNeedValidate)
@@ -280,7 +352,7 @@ public partial class ValidateForm
                 }
 
                 // 客户端提示
-                validator.ToggleMessage(results, true);
+                validator.ToggleMessage(results);
             }
         }
     }
@@ -293,7 +365,7 @@ public partial class ValidateForm
     /// <param name="results"></param>
     /// <param name="propertyInfo"></param>
     /// <param name="memberName"></param>
-    private void ValidateDataAnnotations(object? value, ValidationContext context, ICollection<ValidationResult> results, PropertyInfo propertyInfo, string? memberName = null)
+    private void ValidateDataAnnotations(object? value, ValidationContext context, List<ValidationResult> results, PropertyInfo propertyInfo, string? memberName = null)
     {
         var rules = propertyInfo.GetCustomAttributes(true).OfType<ValidationAttribute>();
         var metadataType = context.ObjectType.GetCustomAttribute<MetadataTypeAttribute>(false);
@@ -313,17 +385,17 @@ public partial class ValidateForm
             var result = rule.GetValidationResult(value, context);
             if (result != null && result != ValidationResult.Success)
             {
-                // 查找 resx 资源文件中的 ErrorMessage
+                // 查找 resource 资源文件中的 ErrorMessage
                 var ruleNameSpan = rule.GetType().Name.AsSpan();
                 var index = ruleNameSpan.IndexOf(attributeSpan, StringComparison.OrdinalIgnoreCase);
                 var ruleName = ruleNameSpan[..index];
                 var find = false;
                 if (!string.IsNullOrEmpty(rule.ErrorMessage))
                 {
-                    var resxType = Options.Value.ResourceManagerStringLocalizerType;
-                    if (resxType != null && LocalizerFactory.Create(resxType).TryGetLocalizerString(rule.ErrorMessage, out var resx))
+                    var resourceType = Options.Value.ResourceManagerStringLocalizerType;
+                    if (resourceType != null && LocalizerFactory.Create(resourceType).TryGetLocalizerString(rule.ErrorMessage, out var text))
                     {
-                        rule.ErrorMessage = resx;
+                        rule.ErrorMessage = text;
                         find = true;
                     }
                 }
@@ -360,7 +432,7 @@ public partial class ValidateForm
                 var errorMessage = !string.IsNullOrEmpty(rule.ErrorMessage) && rule.ErrorMessage.Contains("{0}")
                     ? rule.FormatErrorMessage(displayName)
                     : rule.ErrorMessage;
-                results.Add(new ValidationResult(errorMessage, new string[] { memberName }));
+                results.Add(new ValidationResult(errorMessage, [memberName]));
             }
         }
     }
@@ -373,7 +445,7 @@ public partial class ValidateForm
     private async Task ValidateProperty(ValidationContext context, List<ValidationResult> results)
     {
         // 获得所有可写属性
-        var properties = context.ObjectType.GetRuntimeProperties().Where(p => IsPublic(p) && p.CanWrite && !p.GetIndexParameters().Any());
+        var properties = context.ObjectType.GetRuntimeProperties().Where(p => IsPublic(p) && p.IsCanWrite() && p.GetIndexParameters().Length == 0);
         foreach (var pi in properties)
         {
             // 设置其关联属性字段
@@ -382,7 +454,7 @@ public partial class ValidateForm
             context.DisplayName = fieldIdentifier.GetDisplayName();
             context.MemberName = fieldIdentifier.FieldName;
 
-            if (ValidatorCache.TryGetValue((fieldIdentifier.FieldName, fieldIdentifier.Model.GetType()), out var v))
+            if (_validatorCache.TryGetValue((fieldIdentifier.FieldName, fieldIdentifier.Model.GetType()), out var v))
             {
                 var validator = v.ValidateComponent;
 
@@ -402,10 +474,16 @@ public partial class ValidateForm
                         await ValidateAsync(validator, context, messages, pi, propertyValue);
 
                         // 客户端提示
-                        validator.ToggleMessage(messages, true);
+                        validator.ToggleMessage(messages);
                     }
                     results.AddRange(messages);
                 }
+            }
+            else
+            {
+                var messages = new List<ValidationResult>();
+                ValidateDataAnnotations(propertyValue, context, messages, pi);
+                results.AddRange(messages);
             }
         }
     }
@@ -436,16 +514,38 @@ public partial class ValidateForm
             if (messages.Count == 0)
             {
                 // 自定义验证组件
+                _tcs = new TaskCompletionSource<bool>();
                 await validator.ValidatePropertyAsync(propertyValue, context, messages);
+                _tcs.TrySetResult(messages.Count == 0);
+            }
+
+            if (messages.Count == 0)
+            {
+                // 联动字段验证 IValidateCollection
+                IValidateCollection? validate;
+                if (context.ObjectInstance is IValidateCollection v)
+                {
+                    validate = v;
+                }
+                else
+                {
+                    validate = context.GetInstanceFromMetadataType<IValidateCollection>();
+                }
+                if (validate != null)
+                {
+                    messages.AddRange(validate.Validate(context));
+                    ValidMemberNames.AddRange(validate.GetValidMemberNames());
+                    InvalidMemberNames.AddRange(validate.GetInvalidMemberNames());
+                }
             }
         }
 
-        _invalid = messages.Any();
+        _invalid = messages.Count > 0;
     }
 
     private bool _invalid = false;
 
-    private List<ButtonBase> AsyncSubmitButtons { get; } = new();
+    private List<ButtonBase> AsyncSubmitButtons { get; } = [];
 
     /// <summary>
     /// 注册提交按钮
@@ -456,9 +556,11 @@ public partial class ValidateForm
         AsyncSubmitButtons.Add(button);
     }
 
+    private TaskCompletionSource<bool>? _tcs;
+
     private async Task OnValidSubmitForm(EditContext context)
     {
-        var isAsync = AsyncSubmitButtons.Any();
+        var isAsync = AsyncSubmitButtons.Count > 0;
         foreach (var b in AsyncSubmitButtons)
         {
             b.TriggerAsync(true);
@@ -467,10 +569,28 @@ public partial class ValidateForm
         {
             await Task.Yield();
         }
-        if (OnValidSubmit != null)
+
+        var valid = true;
+        // 由于可能有异步验证，需要等待异步验证结束
+        if (_tcs != null)
         {
-            await OnValidSubmit(context);
+            valid = await _tcs.Task;
         }
+        if (valid)
+        {
+            if (OnValidSubmit != null)
+            {
+                await OnValidSubmit(context);
+            }
+        }
+        else
+        {
+            if (OnInvalidSubmit != null)
+            {
+                await OnInvalidSubmit(context);
+            }
+        }
+
         foreach (var b in AsyncSubmitButtons)
         {
             b.TriggerAsync(false);
@@ -479,7 +599,7 @@ public partial class ValidateForm
 
     private async Task OnInvalidSubmitForm(EditContext context)
     {
-        var isAsync = AsyncSubmitButtons.Any();
+        var isAsync = AsyncSubmitButtons.Count > 0;
         foreach (var b in AsyncSubmitButtons)
         {
             b.TriggerAsync(true);
@@ -508,9 +628,7 @@ public partial class ValidateForm
     public bool Validate()
     {
         _invalid = true;
-        var ret = Validator.Validate() && !_invalid;
-        StateHasChanged();
-        return ret;
+        return Validator.Validate() && !_invalid;
     }
 
     /// <summary>
@@ -520,7 +638,7 @@ public partial class ValidateForm
     /// <param name="value"></param>
     public void NotifyFieldChanged(in FieldIdentifier fieldIdentifier, object? value)
     {
-        ValueChagnedFields.AddOrUpdate(fieldIdentifier, key => value, (key, v) => value);
+        ValueChangedFields.AddOrUpdate(fieldIdentifier, key => value, (key, v) => value);
         OnFieldValueChanged?.Invoke(fieldIdentifier.FieldName, value);
     }
 
@@ -528,5 +646,13 @@ public partial class ValidateForm
     /// 获取 当前表单值改变的属性集合
     /// </summary>
     /// <returns></returns>
+    public ConcurrentDictionary<FieldIdentifier, object?> ValueChangedFields { get; } = new();
+
+    /// <summary>
+    /// 获取 当前表单值改变的属性集合
+    /// </summary>
+    /// <returns></returns>
+    [Obsolete("已弃用，单词拼写错误，请使用 ValueChangedFields，Deprecated Please use ValueChangedFields instead. wrong typo")]
+    [ExcludeFromCodeCoverage]
     public ConcurrentDictionary<FieldIdentifier, object?> ValueChagnedFields { get; } = new();
 }

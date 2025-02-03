@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.AspNetCore.Components.Forms;
 using System.Linq.Expressions;
@@ -11,11 +12,7 @@ namespace BootstrapBlazor.Components;
 /// EditorItem 组件
 /// </summary>
 /// <remarks>用于 EditorForm 的 FieldItems 模板内</remarks>
-#if NET6_0_OR_GREATER
 public class EditorItem<TModel, TValue> : ComponentBase, IEditorItem
-#else
-public class EditorItem<TValue> : ComponentBase, IEditorItem
-#endif
 {
     /// <summary>
     /// 获得/设置 绑定字段值
@@ -42,27 +39,36 @@ public class EditorItem<TValue> : ComponentBase, IEditorItem
     public Expression<Func<TValue>>? FieldExpression { get; set; }
 
     /// <summary>
-    /// 获得/设置 当前列是否可编辑 默认为 true 当设置为 false 时自动生成编辑 UI 不生成此列
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
+    [Obsolete("已弃用，是否可编辑改用 Readonly 参数，是否可见改用 Ignore 参数; Deprecated If it is editable, use the Readonly parameter. If it is visible, use the Ignore parameter.")]
+    [ExcludeFromCodeCoverage]
     public bool Editable { get; set; } = true;
 
     /// <summary>
-    /// 获得/设置 当前列编辑时是否为只读模式 默认为 false
+    /// <inheritdoc/>>
     /// </summary>
-    /// <remarks>此属性覆盖 <see cref="IsReadonlyWhenAdd"/> 与 <see cref="IsReadonlyWhenEdit"/> 即新建与编辑时均只读</remarks>
     [Parameter]
-    public bool Readonly { get; set; }
+    public bool? Ignore { get; set; }
 
     /// <summary>
-    /// 获得/设置 新建时此列只读 默认为 false
+    /// <inheritdoc/>>
     /// </summary>
-    public bool IsReadonlyWhenAdd { get; set; }
+    [Parameter]
+    public bool? Readonly { get; set; }
 
     /// <summary>
-    /// 获得/设置 编辑时此列只读 默认为 false
+    /// <inheritdoc/>
     /// </summary>
-    public bool IsReadonlyWhenEdit { get; set; }
+    [Parameter]
+    public bool? Required { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public string? RequiredErrorMessage { get; set; }
 
     /// <summary>
     /// 获得/设置 是否不进行验证 默认为 false
@@ -83,10 +89,10 @@ public class EditorItem<TValue> : ComponentBase, IEditorItem
     public string? Text { get; set; }
 
     /// <summary>
-    /// 获得/设置 步长
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
-    public object? Step { get; set; }
+    public string? Step { get; set; }
 
     /// <summary>
     /// 获得/设置 Textarea行数
@@ -98,9 +104,6 @@ public class EditorItem<TValue> : ComponentBase, IEditorItem
     /// 获得/设置 编辑模板
     /// </summary>
     [Parameter]
-#if NET5_0
-    public RenderFragment<object>? EditTemplate { get; set; }
-#elif NET6_0_OR_GREATER
     public RenderFragment<TModel>? EditTemplate { get; set; }
 
     RenderFragment<object>? IEditorItem.EditTemplate
@@ -116,7 +119,6 @@ public class EditorItem<TValue> : ComponentBase, IEditorItem
         {
         }
     }
-#endif
 
     /// <summary>
     /// 获得/设置 组件类型 默认为 null
@@ -167,16 +169,28 @@ public class EditorItem<TValue> : ComponentBase, IEditorItem
     public bool IsPopover { get; set; }
 
     /// <summary>
-    /// 获得/设置 字典数据源字符串比较规则 默认 StringComparison.OrdinalIgnoreCase 大小写不敏感 
+    /// <inheritdoc/>
     /// </summary>
     [Parameter]
     public StringComparison LookupStringComparison { get; set; } = StringComparison.OrdinalIgnoreCase;
 
     /// <summary>
-    /// 获得/设置 LookupService 服务获取 Lookup 数据集合键值 常用于外键自动转换为名称操作
+    /// <inheritdoc/>>
     /// </summary>
     [Parameter]
     public string? LookupServiceKey { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>>
+    /// </summary>
+    [Parameter]
+    public object? LookupServiceData { get; set; }
+
+    /// <summary>
+    /// <inheritdoc/>
+    /// </summary>
+    [Parameter]
+    public ILookupService? LookupService { get; set; }
 
     /// <summary>
     /// 获得/设置 自定义验证集合
@@ -224,7 +238,7 @@ public class EditorItem<TValue> : ComponentBase, IEditorItem
     /// <summary>
     /// 获取绑定字段显示名称方法
     /// </summary>
-    public string GetDisplayName() => Text ?? _fieldIdentifier?.GetDisplayName() ?? string.Empty;
+    public virtual string GetDisplayName() => Text ?? _fieldIdentifier?.GetDisplayName() ?? string.Empty;
 
     /// <summary>
     /// 获取绑定字段信息方法

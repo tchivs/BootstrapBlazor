@@ -1,8 +1,9 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Components.Rendering;
 
 namespace BootstrapBlazor.Components;
 
@@ -23,10 +24,9 @@ public static class DialogServiceExtensions
         {
             [nameof(SearchDialog<TModel>.ShowUnsetGroupItemsOnTop)] = option.ShowUnsetGroupItemsOnTop,
             [nameof(SearchDialog<TModel>.ShowLabel)] = option.ShowLabel,
-            [nameof(SearchDialog<TModel>.Items)] = option.Items ?? Utility.GenerateColumns<TModel>(item => item.Searchable),
+            [nameof(SearchDialog<TModel>.Items)] = option.Items ?? Utility.GenerateColumns<TModel>(item => item.GetSearchable()),
             [nameof(SearchDialog<TModel>.OnResetSearchClick)] = new Func<Task>(async () =>
             {
-                await option.CloseDialogAsync();
                 if (option.OnResetSearchClick != null)
                 {
                     await option.OnResetSearchClick();
@@ -34,7 +34,6 @@ public static class DialogServiceExtensions
             }),
             [nameof(SearchDialog<TModel>.OnSearchClick)] = new Func<Task>(async () =>
             {
-                await option.CloseDialogAsync();
                 if (option.OnSearchClick != null)
                 {
                     await option.OnSearchClick();
@@ -55,43 +54,12 @@ public static class DialogServiceExtensions
     /// <summary>
     /// 弹出编辑对话框
     /// </summary>
-    /// <param name="service">DialogService 服务实例</param>
-    /// <param name="option">EditDialogOption 配置类实例</param>
+    /// <param name="service"><see cref="DialogService"/> 服务实例</param>
+    /// <param name="option"><see cref="ITableEditDialogOption{TModel}"/> 配置类实例</param>
     /// <param name="dialog"></param>
     public static async Task ShowEditDialog<TModel>(this DialogService service, EditDialogOption<TModel> option, Dialog? dialog = null)
     {
-        var parameters = new Dictionary<string, object?>
-        {
-            [nameof(EditDialog<TModel>.ShowUnsetGroupItemsOnTop)] = option.ShowUnsetGroupItemsOnTop,
-            [nameof(EditDialog<TModel>.ShowLoading)] = option.ShowLoading,
-            [nameof(EditDialog<TModel>.ShowLabel)] = option.ShowLabel,
-            [nameof(EditDialog<TModel>.Items)] = option.Items ?? Utility.GenerateColumns<TModel>(item => item.Editable),
-            [nameof(EditDialog<TModel>.OnCloseAsync)] = option.OnCloseAsync,
-            [nameof(EditDialog<TModel>.OnSaveAsync)] = new Func<EditContext, Task>(async context =>
-            {
-                if (option.OnEditAsync != null)
-                {
-                    var ret = await option.OnEditAsync(context);
-                    if (ret)
-                    {
-                        await option.CloseDialogAsync();
-                    }
-                }
-            }),
-            [nameof(EditDialog<TModel>.RowType)] = option.RowType,
-            [nameof(EditDialog<TModel>.LabelAlign)] = option.LabelAlign,
-            [nameof(EditDialog<TModel>.ItemChangedType)] = option.ItemChangedType,
-            [nameof(EditDialog<TModel>.IsTracking)] = option.IsTracking,
-            [nameof(EditDialog<TModel>.ItemsPerRow)] = option.ItemsPerRow,
-            [nameof(EditDialog<TModel>.CloseButtonText)] = option.CloseButtonText,
-            [nameof(EditDialog<TModel>.SaveButtonText)] = option.SaveButtonText,
-            [nameof(EditDialog<TModel>.Model)] = option.Model,
-            [nameof(EditDialog<TModel>.DisableAutoSubmitFormByEnter)] = option.DisableAutoSubmitFormByEnter,
-            [nameof(EditDialog<TModel>.BodyTemplate)] = option.DialogBodyTemplate,
-            [nameof(EditDialog<TModel>.FooterTemplate)] = option.DialogFooterTemplate
-        };
-
-        option.Component = BootstrapDynamicComponent.CreateComponent<EditDialog<TModel>>(parameters);
+        option.Component = BootstrapDynamicComponent.CreateComponent<EditDialog<TModel>>(option.ToParameter());
         await service.Show(option, dialog);
     }
 
@@ -105,91 +73,90 @@ public static class DialogServiceExtensions
     public static async Task<DialogResult> ShowModal<TDialog>(this DialogService service, ResultDialogOption option, Dialog? dialog = null)
         where TDialog : IComponent, IResultDialog
     {
-        IResultDialog? resultDialog = null;
-        var result = DialogResult.Unset;
-
-        option.BodyTemplate = builder =>
+        if (option.BodyTemplate == null)
         {
-            var index = 0;
-            builder.OpenComponent(index++, typeof(TDialog));
-            if (option.ComponentParamters != null)
+            IResultDialog? resultDialog = null;
+            option.GetDialog = () => resultDialog;
+            option.BodyTemplate = builder =>
             {
-                foreach (var p in option.ComponentParamters)
+                builder.OpenComponent(0, typeof(TDialog));
+                if (option.ComponentParameters != null)
                 {
-                    builder.AddAttribute(index++, p.Key, p.Value);
+                    builder.AddMultipleAttributes(10, option.ComponentParameters);
                 }
-            }
-            builder.AddComponentReferenceCapture(index++, com => resultDialog = (IResultDialog)com);
-            builder.CloseComponent();
-        };
+                builder.AddComponentReferenceCapture(30, com => resultDialog = (IResultDialog)com);
+                builder.CloseComponent();
+            };
+        }
 
-        option.FooterTemplate = BootstrapDynamicComponent.CreateComponent<ResultDialogFooter>(new Dictionary<string, object?>
+        option.FooterTemplate ??= BootstrapDynamicComponent.CreateComponent<ResultDialogFooter>(new Dictionary<string, object?>
         {
-            [nameof(ResultDialogFooter.ButtonCloseText)] = option.ButtonCloseText,
             [nameof(ResultDialogFooter.ButtonNoText)] = option.ButtonNoText,
             [nameof(ResultDialogFooter.ButtonYesText)] = option.ButtonYesText,
-            [nameof(ResultDialogFooter.ShowCloseButton)] = option.ShowCloseButton,
-            [nameof(ResultDialogFooter.ButtonCloseColor)] = option.ButtonCloseColor,
-            [nameof(ResultDialogFooter.ButtonCloseIcon)] = option.ButtonCloseIcon,
-            [nameof(ResultDialogFooter.OnClickClose)] = new Func<Task>(async () =>
-            {
-                result = DialogResult.Close;
-                if (option.OnCloseAsync != null) { await option.OnCloseAsync(); }
-            }),
-
             [nameof(ResultDialogFooter.ShowYesButton)] = option.ShowYesButton,
             [nameof(ResultDialogFooter.ButtonYesColor)] = option.ButtonYesColor,
             [nameof(ResultDialogFooter.ButtonYesIcon)] = option.ButtonYesIcon,
-            [nameof(ResultDialogFooter.OnClickYes)] = new Func<Task>(async () =>
-            {
-                result = DialogResult.Yes;
-                if (option.OnCloseAsync != null) { await option.OnCloseAsync(); }
-            }),
-
             [nameof(ResultDialogFooter.ShowNoButton)] = option.ShowNoButton,
             [nameof(ResultDialogFooter.ButtonNoColor)] = option.ButtonNoColor,
-            [nameof(ResultDialogFooter.ButtonNoIcon)] = option.ButtonNoIcon,
-            [nameof(ResultDialogFooter.OnClickNo)] = new Func<Task>(async () =>
-            {
-                result = DialogResult.No;
-                if (option.OnCloseAsync != null) { await option.OnCloseAsync(); }
-            })
+            [nameof(ResultDialogFooter.ButtonNoIcon)] = option.ButtonNoIcon
         }).Render();
 
-        var closeCallback = option.OnCloseAsync;
-        option.OnCloseAsync = async () =>
+        if (option.ResultTask.Task.IsCompleted)
         {
-            if (resultDialog != null && await resultDialog.OnClosing(result))
-            {
-                await resultDialog.OnClose(result);
-                if (closeCallback != null)
-                {
-                    await closeCallback();
-                }
-
-                option.OnCloseAsync = null;
-                if (result == DialogResult.Unset)
-                {
-                    result = DialogResult.Close;
-                }
-                else
-                {
-                    await option.CloseDialogAsync();
-                }
-                option.ReturnTask.SetResult(result);
-            }
-            else
-            {
-                result = DialogResult.Close;
-            }
-        };
-
+            option.ResultTask = new();
+        }
         await service.Show(option, dialog);
-        return await option.ReturnTask.Task;
+        return await option.ResultTask.Task;
     }
 
     /// <summary>
-    /// 弹出保存对话窗方法
+    /// 弹出带结果的对话框
+    /// </summary>
+    /// <param name="service">DialogService 服务实例</param>
+    /// <param name="title">对话框标题，优先级高于 <see cref="DialogOption.Title"/></param>
+    /// <param name="content">对话框 <see cref="MarkupString"/> 文本参数</param>
+    /// <param name="option"><see cref="ResultDialogOption"/> 对话框参数实例</param>
+    /// <param name="dialog">指定弹窗组件 默认为 null 使用 <see cref="BootstrapBlazorRoot"/> 组件内置弹窗组件</param>
+    public static Task<DialogResult> ShowModal(this DialogService service, string title, string content, ResultDialogOption? option = null, Dialog? dialog = null)
+    {
+        option ??= new();
+        if (!string.IsNullOrEmpty(title))
+        {
+            option.Title = title;
+        }
+        if (!string.IsNullOrEmpty(content))
+        {
+            IResultDialog? resultDialog = null;
+            option.GetDialog = () => resultDialog;
+            option.BodyTemplate = builder =>
+            {
+                builder.OpenComponent(0, typeof(ResultDialog));
+                builder.AddAttribute(20, nameof(ResultDialog.Content), content);
+                builder.AddComponentReferenceCapture(30, com => resultDialog = (IResultDialog)com);
+                builder.CloseComponent();
+            };
+        }
+        return ShowModal<ResultDialog>(service, option, dialog);
+    }
+
+    private class ResultDialog : ComponentBase, IResultDialog
+    {
+        [Parameter]
+        public string? Content { get; set; }
+
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
+        {
+            builder.AddMarkupContent(0, Content);
+        }
+
+        public Task OnClose(DialogResult result)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// 弹出带保存按钮对话窗方法
     /// </summary>
     /// <typeparam name="TComponent"></typeparam>
     /// <param name="service">DialogService 服务实例</param>
@@ -207,19 +174,15 @@ public static class DialogServiceExtensions
             ShowSaveButton = true,
             OnSaveAsync = saveCallback
         };
-        Dictionary<string, object?>? parameters = null;
-        if (parametersFactory != null)
-        {
-            parameters = new Dictionary<string, object?>();
-            parametersFactory.Invoke(parameters);
-        }
+        var parameters = new Dictionary<string, object?>();
+        parametersFactory?.Invoke(parameters);
         option.Component = BootstrapDynamicComponent.CreateComponent<TComponent>(parameters);
         configureOption?.Invoke(option);
         await service.Show(option, dialog);
     }
 
     /// <summary>
-    /// 弹出保存对话窗
+    /// 弹出带关闭按钮对话窗方法
     /// </summary>
     /// <typeparam name="TComponent"></typeparam>
     /// <param name="service"></param>
@@ -238,7 +201,6 @@ public static class DialogServiceExtensions
         parametersFactory?.Invoke(parameters);
         option.Component = BootstrapDynamicComponent.CreateComponent<TComponent>(parameters);
         configureOption?.Invoke(option);
-
         await service.Show(option, dialog);
     }
 

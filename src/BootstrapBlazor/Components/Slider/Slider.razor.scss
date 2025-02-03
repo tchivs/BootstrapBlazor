@@ -1,0 +1,13 @@
+.row {
+    --bb-form-range-margin-top: #{$bb-form-range-margin-top};
+
+    .form-range {
+        margin-block-start: var(--bb-form-range-margin-top);
+    }
+}
+
+.form-range {
+    &:disabled {
+        background-color: unset;
+    }
+}

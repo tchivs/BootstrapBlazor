@@ -1,9 +1,8 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using BootstrapBlazor.Shared;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
@@ -59,6 +58,15 @@ public class DataTableDynamicContextTest : BootstrapBlazorTestBase
     }
 
     [Fact]
+    public void Ignore_Ok()
+    {
+        var localizer = Context.Services.GetRequiredService<IStringLocalizer<Foo>>();
+        var fooData = GenerateDataTable(localizer);
+        var context = new DataTableDynamicContext(fooData, IgnoreCallback(localizer));
+        Assert.Equal(4, context.GetColumns().Count());
+    }
+
+    [Fact]
     public void RowStatus_Ok()
     {
         var localizer = Context.Services.GetRequiredService<IStringLocalizer<Foo>>();
@@ -83,7 +91,7 @@ public class DataTableDynamicContextTest : BootstrapBlazorTestBase
         var localizer = Context.Services.GetRequiredService<IStringLocalizer<Foo>>();
         var fooData = GenerateDataTable(localizer);
         var context = new DataTableDynamicContext(fooData);
-        context.AddAttribute(nameof(Foo.Name), typeof(DisplayAttribute), Type.EmptyTypes, Array.Empty<object>(), null, null);
+        context.AddAttribute(nameof(Foo.Name), typeof(DisplayAttribute), Type.EmptyTypes, [], null, null);
     }
 
     [Fact]
@@ -126,7 +134,7 @@ public class DataTableDynamicContextTest : BootstrapBlazorTestBase
                 return Task.CompletedTask;
             }
         };
-        await context.AddAsync(Enumerable.Empty<IDynamicObject>());
+        await context.AddAsync([]);
         Assert.True(changed);
     }
 
@@ -180,7 +188,7 @@ public class DataTableDynamicContextTest : BootstrapBlazorTestBase
         Assert.Equal(4, context.GetItems().Count());
 
         // add empty
-        await context.AddAsync(Enumerable.Empty<IDynamicObject>());
+        await context.AddAsync([]);
 
         // 在选中行位置插入
         await context.AddAsync(context.GetItems().Take(2));
@@ -266,6 +274,33 @@ public class DataTableDynamicContextTest : BootstrapBlazorTestBase
             {
                 new(nameof(DisplayAttribute.Name), localizer[nameof(Foo.DateTime)].Value)
             });
+        }
+        else if (propertyName == nameof(Foo.Name))
+        {
+            context.AddRequiredAttribute(nameof(Foo.Name), localizer["Name.Required"].Value);
+            context.AddDisplayNameAttribute(nameof(Foo.Name), "Test-Name");
+            context.AddDescriptionAttribute(nameof(Foo.Name), "Test-Name-Desc");
+            // 使用 Text 设置显示名称示例
+            col.Text = localizer[nameof(Foo.Name)];
+        }
+    });
+
+    private static Action<DataTableDynamicContext, ITableColumn> IgnoreCallback(IStringLocalizer<Foo> localizer) => new((context, col) =>
+    {
+        var propertyName = col.GetFieldName();
+        if (propertyName == nameof(Foo.DateTime))
+        {
+            context.AddRequiredAttribute(nameof(Foo.DateTime));
+            // 使用 AutoGenerateColumnAttribute 设置显示名称示例
+            context.AddAutoGenerateColumnAttribute(nameof(Foo.DateTime), new KeyValuePair<string, object?>[]
+            {
+                new(nameof(AutoGenerateColumnAttribute.Text), localizer[nameof(Foo.DateTime)].Value)
+            });
+            context.AddDisplayAttribute(nameof(Foo.DateTime), new KeyValuePair<string, object?>[]
+            {
+                new(nameof(DisplayAttribute.Name), localizer[nameof(Foo.DateTime)].Value)
+            });
+            col.Ignore = true;
         }
         else if (propertyName == nameof(Foo.Name))
         {

@@ -1,6 +1,7 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
 using Microsoft.Extensions.Localization;
 using System.Reflection.Metadata;
@@ -33,6 +34,7 @@ public partial class Console
     /// <returns></returns>
     private static string? GetClassString(ConsoleMessageItem item) => CssBuilder.Default()
         .AddClass($"text-{item.Color.ToDescriptionString()}", item.Color != Color.None)
+        .AddClass(item.CssClass, !string.IsNullOrEmpty(item.CssClass))
         .Build();
 
     /// <summary>
@@ -43,6 +45,7 @@ public partial class Console
     /// <summary>
     /// 获得/设置 组件绑定数据源
     /// </summary>
+    /// <remarks><see cref="ConsoleMessageCollection"/> 集合内置了最大消息数量功能</remarks>
     [Parameter]
     [NotNull]
     public IEnumerable<ConsoleMessageItem>? Items { get; set; }
@@ -170,7 +173,7 @@ public partial class Console
         AutoScrollText ??= Localizer[nameof(AutoScrollText)];
 
         ClearButtonIcon ??= IconTheme.GetIconByKey(ComponentIcons.ConsoleClearButtonIcon);
-        Items ??= Enumerable.Empty<ConsoleMessageItem>();
+        Items ??= [];
     }
 
     /// <summary>
@@ -182,7 +185,7 @@ public partial class Console
     {
         await base.OnAfterRenderAsync(firstRender);
 
-        if(!firstRender)
+        if (!firstRender)
         {
             await InvokeVoidAsync("update", Id);
         }

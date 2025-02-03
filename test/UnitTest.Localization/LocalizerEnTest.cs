@@ -1,9 +1,9 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using BootstrapBlazor.Shared;
-using Microsoft.Extensions.DependencyInjection;
+using BootstrapBlazor.Server.Data;
 using Microsoft.Extensions.Localization;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
@@ -12,17 +12,11 @@ namespace UnitTest.Localization;
 
 public class LocalizerEnTest : BootstrapBlazorEnTestBase
 {
-    private IStringLocalizer<Foo> Localizer { get; }
-
-    public LocalizerEnTest()
-    {
-        Localizer = Context.Services.GetRequiredService<IStringLocalizer<Foo>>();
-    }
-
     [Fact]
     public void Foo_Json_Ok()
     {
-        var foo = Foo.Generate(Localizer);
+        var localizer = Context.Services.GetRequiredService<IStringLocalizer<Foo>>();
+        var foo = Foo.Generate(localizer);
 
         Assert.Equal("Zhangsan 1000", foo.Name);
     }
@@ -30,6 +24,7 @@ public class LocalizerEnTest : BootstrapBlazorEnTestBase
     [Fact]
     public void Dummy_Resource_Ok()
     {
+        Context.Services.GetRequiredService<IStringLocalizer<Foo>>();
         Assert.Equal("en-US", CultureInfo.CurrentUICulture.Name);
 
         var val = Utility.GetDisplayName(typeof(DummyEn), nameof(DummyEn.Name));

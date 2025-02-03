@@ -1,14 +1,14 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using BootstrapBlazor.Shared;
 using System.ComponentModel;
 using System.Globalization;
 
 namespace UnitTest.Extensions;
 
-public class ObjectExtensionsTest
+public class ObjectExtensionsTest : BootstrapBlazorTestBase
 {
     [Theory]
     [InlineData(null, "")]
@@ -42,6 +42,20 @@ public class ObjectExtensionsTest
     {
         var actual = source.IsNumber();
         Assert.Equal(expect, actual);
+    }
+
+    [Fact]
+    public void IsNumber_Culture()
+    {
+        var culture = new CultureInfo("es-ES");
+        CultureInfo.CurrentUICulture = culture;
+        Assert.True(typeof(long).IsNumber());
+        Assert.False(typeof(long).IsNumberWithDotSeparator());
+
+        culture = new CultureInfo("en-US");
+        CultureInfo.CurrentUICulture = culture;
+        Assert.True(typeof(long).IsNumber());
+        Assert.True(typeof(long).IsNumberWithDotSeparator());
     }
 
     [Theory]
@@ -152,62 +166,105 @@ public class ObjectExtensionsTest
     }
 
     [Theory]
-    [InlineData(ItemChangedType.Add)]
-    [InlineData(ItemChangedType.Update)]
-    public void IsEditable_Editable(ItemChangedType itemChangedType)
+    [InlineData(ItemChangedType.Add, true, false)]
+    [InlineData(ItemChangedType.Update, true, false)]
+    [InlineData(ItemChangedType.Add, false, true)]
+    [InlineData(ItemChangedType.Update, false, true)]
+    public void Readonly_Ok(ItemChangedType itemChangedType, bool @readonly, bool expected)
     {
-        var editorItem = new EditorItem<Foo, string>();
-        Assert.True(editorItem.IsEditable(itemChangedType));
-    }
-
-    [Theory]
-    [InlineData(ItemChangedType.Add)]
-    [InlineData(ItemChangedType.Update)]
-    public void IsEditable_Readonly(ItemChangedType itemChangedType)
-    {
-        var editorItem = new EditorItem<Foo, string>();
-        editorItem.SetParametersAsync(ParameterView.FromDictionary(new Dictionary<string, object?>
+        var column = new TableColumn<Foo, string>();
+        column.SetParametersAsync(ParameterView.FromDictionary(new Dictionary<string, object?>
         {
-            ["Readonly"] = true
+            ["Readonly"] = @readonly,
         }));
-        Assert.False(editorItem.IsEditable(itemChangedType));
+        Assert.Equal(expected, column.IsEditable(itemChangedType));
     }
 
     [Theory]
-    [InlineData(ItemChangedType.Add, true)]
-    [InlineData(ItemChangedType.Add, false)]
-    public void IsEditable_IsReadonlyWhenAdd(ItemChangedType itemChangedType, bool val)
+    [InlineData(ItemChangedType.Add, true, null, false)]
+    [InlineData(ItemChangedType.Add, true, false, false)]
+    [InlineData(ItemChangedType.Add, true, true, false)]
+    [InlineData(ItemChangedType.Add, false, null, true)]
+    [InlineData(ItemChangedType.Add, false, false, true)]
+    [InlineData(ItemChangedType.Add, false, true, false)]
+    public void ReadonlyWhenAdd_Ok(ItemChangedType itemChangedType, bool @readonly, bool? readonlyWhenAdd, bool expected)
     {
-        var editorItem = new EditorItem<Foo, string>()
+        var column = new TableColumn<Foo, string>();
+        column.SetParametersAsync(ParameterView.FromDictionary(new Dictionary<string, object?>
         {
-            IsReadonlyWhenAdd = val
-        };
-        Assert.Equal(val, !editorItem.IsEditable(itemChangedType));
-    }
-
-    [Theory]
-    [InlineData(ItemChangedType.Update, true)]
-    [InlineData(ItemChangedType.Update, false)]
-    public void IsEditable_IsReadonlyWhenEdit(ItemChangedType itemChangedType, bool val)
-    {
-        var editorItem = new EditorItem<Foo, string>()
-        {
-            IsReadonlyWhenEdit = val
-        };
-        Assert.Equal(val, !editorItem.IsEditable(itemChangedType));
-    }
-
-    [Theory]
-    [InlineData(ItemChangedType.Add)]
-    [InlineData(ItemChangedType.Update)]
-    public void IsEditable_Search(ItemChangedType itemChangedType)
-    {
-        var editorItem = new EditorItem<Foo, string>();
-        editorItem.SetParametersAsync(ParameterView.FromDictionary(new Dictionary<string, object?>
-        {
-            ["Editable"] = false
+            [nameof(ITableColumn.Readonly)] = @readonly,
+            [nameof(ITableColumn.IsReadonlyWhenAdd)] = readonlyWhenAdd,
         }));
-        Assert.True(editorItem.IsEditable(itemChangedType, true));
+        Assert.Equal(expected, column.IsEditable(itemChangedType));
+    }
+
+    [Theory]
+    [InlineData(ItemChangedType.Update, true, null, false)]
+    [InlineData(ItemChangedType.Update, true, false, false)]
+    [InlineData(ItemChangedType.Update, true, true, false)]
+    [InlineData(ItemChangedType.Update, false, null, true)]
+    [InlineData(ItemChangedType.Update, false, false, true)]
+    [InlineData(ItemChangedType.Update, false, true, false)]
+    public void ReadonlyWhenUpdate_Ok(ItemChangedType itemChangedType, bool @readonly, bool? readonlyWhenUpdate, bool expected)
+    {
+        var column = new TableColumn<Foo, string>();
+        column.SetParametersAsync(ParameterView.FromDictionary(new Dictionary<string, object?>
+        {
+            [nameof(ITableColumn.Readonly)] = @readonly,
+            [nameof(ITableColumn.IsReadonlyWhenEdit)] = readonlyWhenUpdate,
+        }));
+        Assert.Equal(expected, column.IsEditable(itemChangedType));
+    }
+
+    [Theory]
+    [InlineData(ItemChangedType.Add, true, true)]
+    [InlineData(ItemChangedType.Update, true, true)]
+    [InlineData(ItemChangedType.Add, false, false)]
+    [InlineData(ItemChangedType.Update, false, false)]
+    public void Visible_Ok(ItemChangedType itemChangedType, bool visible, bool expected)
+    {
+        var column = new TableColumn<Foo, string>();
+        column.SetParametersAsync(ParameterView.FromDictionary(new Dictionary<string, object?>
+        {
+            [nameof(ITableColumn.Visible)] = visible,
+        }));
+        Assert.Equal(expected, column.IsVisible(itemChangedType));
+    }
+
+    [Theory]
+    [InlineData(ItemChangedType.Add, true, null, true)]
+    [InlineData(ItemChangedType.Add, true, false, false)]
+    [InlineData(ItemChangedType.Add, true, true, true)]
+    [InlineData(ItemChangedType.Add, false, null, false)]
+    [InlineData(ItemChangedType.Add, false, false, false)]
+    [InlineData(ItemChangedType.Add, false, true, true)]
+    public void VisibleWhenAdd_Ok(ItemChangedType itemChangedType, bool visible, bool? visibleWhenAdd, bool expected)
+    {
+        var column = new TableColumn<Foo, string>();
+        column.SetParametersAsync(ParameterView.FromDictionary(new Dictionary<string, object?>
+        {
+            [nameof(ITableColumn.Visible)] = visible,
+            [nameof(ITableColumn.IsVisibleWhenAdd)] = visibleWhenAdd,
+        }));
+        Assert.Equal(expected, column.IsVisible(itemChangedType));
+    }
+
+    [Theory]
+    [InlineData(ItemChangedType.Update, true, null, true)]
+    [InlineData(ItemChangedType.Update, true, false, false)]
+    [InlineData(ItemChangedType.Update, true, true, true)]
+    [InlineData(ItemChangedType.Update, false, null, false)]
+    [InlineData(ItemChangedType.Update, false, false, false)]
+    [InlineData(ItemChangedType.Update, false, true, true)]
+    public void VisibleWhenUpdate_Ok(ItemChangedType itemChangedType, bool visible, bool? visibleWhenUpdate, bool expected)
+    {
+        var column = new TableColumn<Foo, string>();
+        column.SetParametersAsync(ParameterView.FromDictionary(new Dictionary<string, object?>
+        {
+            [nameof(ITableColumn.Visible)] = visible,
+            [nameof(ITableColumn.IsVisibleWhenEdit)] = visibleWhenUpdate,
+        }));
+        Assert.Equal(expected, column.IsVisible(itemChangedType));
     }
 
     [Fact]

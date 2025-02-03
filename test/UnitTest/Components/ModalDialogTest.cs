@@ -1,8 +1,8 @@
-﻿// Copyright (c) Argo Zhang (argo@163.com). All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
-// Website: https://www.blazor.zone or https://argozhang.github.io/
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the Apache 2.0 License
+// See the LICENSE file in the project root for more information.
+// Maintainer: Argo Zhang(argo@live.ca) Website: https://www.blazor.zone
 
-using BootstrapBlazor.Shared;
 using System.Web;
 
 namespace UnitTest.Components;
@@ -19,6 +19,7 @@ public class ModalDialogTest : BootstrapBlazorTestBase
                 pb.AddChildContent<ModalDialog>(pb =>
                 {
                     pb.Add(d => d.ShowPrintButton, true);
+                    pb.Add(d => d.PrintButtonColor, Color.Danger);
                 });
             });
         });
@@ -32,6 +33,31 @@ public class ModalDialogTest : BootstrapBlazorTestBase
         });
         // 显示在 Header
         Assert.NotNull(cut.FindComponent<PrintButton>());
+    }
+
+    [Fact]
+    public void ShowExportPdfButton_Ok()
+    {
+        var cut = Context.RenderComponent<BootstrapBlazorRoot>(pb =>
+        {
+            pb.AddChildContent<Modal>(pb =>
+            {
+                pb.AddChildContent<ModalDialog>(pb =>
+                {
+                    pb.Add(d => d.ShowExportPdfButton, true);
+                });
+            });
+        });
+        // 显示在 Footer
+        Assert.NotNull(cut.FindComponent<ExportPdfButton>());
+
+        var dialog = cut.FindComponent<ModalDialog>();
+        dialog.SetParametersAndRender(pb =>
+        {
+            pb.Add(d => d.ShowExportPdfButtonInHeader, true);
+        });
+        // 显示在 Header
+        Assert.NotNull(cut.FindComponent<ExportPdfButton>());
     }
 
     [Fact]
@@ -49,7 +75,31 @@ public class ModalDialogTest : BootstrapBlazorTestBase
             });
         });
         Assert.Contains("is-draggable", cut.Markup);
+        Assert.Contains("is-draggable-center", cut.Markup);
         Assert.Contains("test_class", cut.Markup);
+
+        var dialog = cut.FindComponent<ModalDialog>();
+        dialog.SetParametersAndRender(pb =>
+        {
+            pb.Add(a => a.IsCentered, false);
+        });
+        Assert.DoesNotContain("is-draggable-center", cut.Markup);
+    }
+
+    [Fact]
+    public void ShowResize_Ok()
+    {
+        var cut = Context.RenderComponent<BootstrapBlazorRoot>(pb =>
+        {
+            pb.AddChildContent<Modal>(pb =>
+            {
+                pb.AddChildContent<ModalDialog>(pb =>
+                {
+                    pb.Add(d => d.ShowResize, true);
+                });
+            });
+        });
+        Assert.Contains("modal-resizer", cut.Markup);
     }
 
     [Fact]
@@ -68,11 +118,11 @@ public class ModalDialogTest : BootstrapBlazorTestBase
         Assert.Contains("btn-maximize", cut.Markup);
 
         var button = cut.Find(".btn-maximize");
-        cut.InvokeAsync(() => button.Click());
-        Assert.Contains("modal-fullscreen", cut.Markup);
+        button.Click();
+        cut.WaitForAssertion(() => cut.Contains("modal-fullscreen"));
 
-        cut.InvokeAsync(() => button.Click());
-        Assert.DoesNotContain("modal-fullscreen", cut.Markup);
+        button.Click();
+        cut.WaitForAssertion(() => cut.DoesNotContain("modal-fullscreen"));
     }
 
     [Fact]

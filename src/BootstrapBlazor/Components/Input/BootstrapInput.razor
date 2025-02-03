@@ -1,10 +1,31 @@
 ﻿@namespace BootstrapBlazor.Components
 @typeparam TValue
-@inherits BootstrapInputBase<TValue>
+@inherits BootstrapInputEventBase<TValue>
 
 @if (IsShowLabel)
 {
-    <BootstrapLabel Value="@DisplayText" ShowLabelTooltip="ShowLabelTooltip" required="@Required" for="@Id" />
+    <BootstrapLabel required="@Required" for="@Id" ShowLabelTooltip="ShowLabelTooltip" Value="@DisplayText" />
 }
 
-<input @attributes="@AdditionalAttributes" type="@Type" placeholder="@PlaceHolder" id="@Id" readonly="@ReadonlyString" class="@ClassName" disabled="@Disabled" @bind-value="CurrentValueAsString" @bind-value:event="onchange" @ref="FocusElement" />
+@if (IsClearable)
+{
+    <div class="bb-clearable-input">
+        @RenderInput
+        @if (!IsDisabled && !Readonly)
+        {
+            <i class="@ClearableIconString" @onclick="OnClickClear"></i>
+        }
+    </div>
+}
+else
+{
+    @RenderInput
+}
+
+@code {
+    RenderFragment RenderInput =>
+    @<input @attributes="@AdditionalAttributes" type="@Type" id="@Id" class="@ClassName"
+            readonly="@ReadonlyString" disabled="@Disabled"
+            placeholder="@PlaceHolder"
+            @bind-value="CurrentValueAsString" @bind-value:event="@EventString" @onblur="@OnBlur" @ref="FocusElement" />;
+}

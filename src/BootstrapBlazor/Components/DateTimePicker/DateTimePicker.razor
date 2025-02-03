@@ -7,12 +7,20 @@
 {
     <BootstrapLabel required="@Required" for="@Id" ShowLabelTooltip="ShowLabelTooltip" Value="@DisplayText" />
 }
-<div @attributes="@AdditionalAttributes" tabindex="@TabIndexString" id="@Id" class="@ClassString" data-bb-auto-close="@AutoCloseString" data-bb-dropdown=".picker-panel" data-bb-dismiss=".picker-panel-link-btn">
-    <input readonly class="@InputClassName" value="@CurrentValueAsString" placeholder="@PlaceholderString" disabled="@Disabled" data-bs-toggle="@Constants.DropdownToggleString" data-bs-placement="@PlacementString" data-bs-custom-class="@CustomClassString" />
-    <i class="@DateTimePickerIconClassString"></i>
-    <DatePickerBody @bind-Value="SelectedValue" AllowNull="AllowNull" ShowSidebar="ShowSidebar" SidebarTemplate="SidebarTemplate"
-                    DateFormat="@DateFormat" ShowFooter="true"
+<div @attributes="@AdditionalAttributes" tabindex="@TabIndexString" id="@Id" class="@ClassString" data-bb-dropdown=".picker-panel" data-bb-dismiss=".picker-panel-link-btn">
+    <input readonly="@ReadonlyString" class="@InputClassName" @bind="@CurrentValueAsString" placeholder="@PlaceholderString" disabled="@Disabled" data-bs-toggle="@Constants.DropdownToggleString" data-bs-placement="@PlacementString" data-bs-custom-class="@CustomClassString" @onblur="OnBlur" />
+    @if (ShowIcon)
+    {
+        <i class="@DateTimePickerIconClassString"></i>
+    }
+    <DatePickerBody @bind-Value="SelectedValue" @ref="_pickerBody"
+                    ShowClearButton="AllowNull" ShowSidebar="ShowSidebar" SidebarTemplate="SidebarTemplate"
+                    DateTimeFormat="@DateTimeFormat" DateFormat="@DateFormat" TimeFormat="@TimeFormat" ShowFooter="true"
+                    ShowLunar="ShowLunar" ShowSolarTerm="ShowSolarTerm" ShowFestivals="ShowFestivals" ShowHolidays="ShowHolidays"
                     OnConfirm="OnConfirm" OnClear="OnClear" MinValue="MinValue" MaxValue="MaxValue"
-                    AutoClose="AutoClose" ViewMode="ViewMode">
+                    AutoClose="AutoClose" ViewMode="ViewMode" DayTemplate="DayTemplate!" DayDisabledTemplate="DayDisabledTemplate!"
+                    OnGetDisabledDaysCallback="OnGetDisabledDaysCallback!"
+                    EnableDisabledDaysCache="EnableDisabledDaysCache">
+        @ChildContent
     </DatePickerBody>
 </div>
